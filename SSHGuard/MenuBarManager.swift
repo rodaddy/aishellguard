@@ -90,6 +90,10 @@ class MenuBarManager: ObservableObject {
         menu.addItem(NSMenuItem.separator())
 
         // Management
+        let manageItem = NSMenuItem(title: "Manage Hosts...", action: #selector(handleManageHosts), keyEquivalent: "m")
+        manageItem.target = self
+        menu.addItem(manageItem)
+
         let addHostItem = NSMenuItem(title: "Add Host...", action: #selector(handleAddHost), keyEquivalent: "n")
         addHostItem.target = self
         menu.addItem(addHostItem)
@@ -309,6 +313,12 @@ class MenuBarManager: ObservableObject {
         Task {
             await stateManager.reload()
             updateMenu()
+        }
+    }
+
+    @objc private func handleManageHosts() {
+        ManageHostsWindowController.showOrBring(stateManager: stateManager) { [weak self] in
+            self?.updateMenu()
         }
     }
 
