@@ -11,7 +11,7 @@ class ManageHostsWindowController: NSWindowController, NSWindowDelegate {
         )
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "SSHGuard - Manage Hosts"
+        window.title = "AIShell Guard - Manage Hosts"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 700, height: 500))
         window.minSize = NSSize(width: 500, height: 400)
@@ -54,6 +54,7 @@ struct ManageHostsView: View {
     @State private var searchText = ""
     @State private var showingAddSheet = false
     @State private var hostToEdit: Host?
+    @State private var collapsedGroups: Set<String> = []
 
     var body: some View {
         HSplitView {
@@ -77,13 +78,25 @@ struct ManageHostsView: View {
                         Section(header: GroupHeaderView(
                             group: groupData.key,
                             groupIndex: index,
+                            isCollapsed: Binding(
+                                get: { collapsedGroups.contains(groupData.key) },
+                                set: { newValue in
+                                    if newValue {
+                                        collapsedGroups.insert(groupData.key)
+                                    } else {
+                                        collapsedGroups.remove(groupData.key)
+                                    }
+                                }
+                            ),
                             stateManager: stateManager,
                             onUpdate: onUpdate
                         )) {
-                            ForEach(groupData.value) { host in
-                                HostRowView(host: host, stateManager: stateManager, onUpdate: onUpdate)
-                                    .tag(host.id)
-                                    .draggable(host.id) // Make hosts draggable by ID
+                            if !collapsedGroups.contains(groupData.key) {
+                                ForEach(groupData.value) { host in
+                                    HostRowView(host: host, stateManager: stateManager, onUpdate: onUpdate)
+                                        .tag(host.id)
+                                        .draggable(host.id) // Make hosts draggable by ID
+                                }
                             }
                         }
                     }
@@ -204,11 +217,18 @@ struct ManageHostsView: View {
 struct GroupHeaderView: View {
     let group: String
     let groupIndex: Int
+    @Binding var isCollapsed: Bool
     @ObservedObject var stateManager: StateManager
     let onUpdate: () -> Void
 
     @State private var isHostDropTarget = false
     @State private var isGroupDropTarget = false
+
+    var hostCount: Int {
+        stateManager.state.hosts.filter { host in
+            host.tags.first == group || (group == "ungrouped" && host.tags.isEmpty)
+        }.count
+    }
 
     var body: some View {
         HStack {
@@ -216,9 +236,26 @@ struct GroupHeaderView: View {
                 .foregroundColor(.secondary.opacity(0.5))
                 .font(.caption2)
 
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isCollapsed.toggle()
+                }
+            }) {
+                Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.primary)
+                    .frame(width: 16, height: 16)
+            }
+            .buttonStyle(.plain)
+            .help(isCollapsed ? "Expand group" : "Collapse group")
+
             Text(group.uppercased())
                 .font(.caption)
                 .fontWeight(.semibold)
+
+            Text("(\(hostCount))")
+                .font(.caption2)
+                .foregroundColor(.secondary.opacity(0.7))
         }
         .foregroundColor(isHostDropTarget || isGroupDropTarget ? .accentColor : .secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -244,6 +281,13 @@ struct GroupHeaderView: View {
             return true
         } isTargeted: { targeted in
             isHostDropTarget = targeted
+        }
+        .contextMenu {
+            Text("Set all in \(group) to:").font(.caption)
+            Divider()
+            Button("✅ Allow All") { setAllHostsState(.allowed) }
+            Button("❓ Ask All") { setAllHostsState(.ask) }
+            Button("🚫 Block All") { setAllHostsState(.blocked) }
         }
     }
 
@@ -277,6 +321,29 @@ struct GroupHeaderView: View {
     private func reorderGroup(_ from: String, toIndex: Int) {
         Task {
             await stateManager.moveGroup(from: from, toIndex: toIndex)
+            onUpdate()
+        }
+    }
+
+    private func setAllHostsState(_ newState: SSHState) {
+        let hostsInGroup = stateManager.state.hosts.filter { host in
+            host.tags.first == group || (group == "ungrouped" && host.tags.isEmpty)
+        }
+
+        Task {
+            for host in hostsInGroup {
+                let updatedHost = Host(
+                    id: host.id,
+                    hostname: host.hostname,
+                    ip: host.ip,
+                    user: host.user,
+                    state: newState,
+                    note: host.note,
+                    lastUsed: host.lastUsed,
+                    tags: host.tags
+                )
+                await stateManager.upsertHost(updatedHost)
+            }
             onUpdate()
         }
     }
@@ -484,7 +551,7 @@ struct HostEditorSheet: View {
     @State private var id: String = ""
     @State private var hostname: String = ""
     @State private var ip: String = ""
-    @State private var user: String = "rico"
+    @State private var user: String = NSUserName()
     @State private var state: SSHState = .ask
     @State private var note: String = ""
     @State private var selectedGroup: String = ""

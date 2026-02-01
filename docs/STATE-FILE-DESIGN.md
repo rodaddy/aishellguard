@@ -2,12 +2,11 @@
 
 ## Location
 
-**Production:** `~/.config/pai/infrastructure/ssh-permissions.json`
+**Production:** `~/.config/aishellguard/hosts.json`
 
 **Why this location:**
-- Part of PAI infrastructure configuration
 - Survives app uninstall
-- Can be backed up with other PAI configs
+- Can be backed up with other configs
 - Readable by both menu bar app and bash hook
 
 ## Schema Design Decisions
@@ -19,7 +18,7 @@
 {
   "id": "lxc-202-n8n",    // Stable, doesn't change
   "hostname": "n8n",       // Might change
-  "ip": "10.71.20.51"      // Might change
+  "ip": "192.0.2.51"      // Might change
 }
 ```
 
@@ -44,10 +43,10 @@ Unknown SSH attempts go into `pending[]` array:
 {
   "pending": [
     {
-      "ip": "10.71.20.99",
+      "ip": "192.0.2.99",
       "user": "root",
       "detectedAt": "2026-01-31T23:45:00Z",
-      "attemptedBy": "claude-code"
+      "attemptedBy": "user"
     }
   ]
 }
@@ -144,19 +143,19 @@ This prevents hook from reading partial/corrupted file.
 
 ### 1. Adding new LXC
 ```
-User: "SSH to new LXC at 10.71.20.60"
+User: "SSH to new LXC at 192.0.2.60"
 Hook: "Unknown host, blocked"
-App: Shows notification "Unknown host 10.71.20.60"
+App: Shows notification "Unknown host 192.0.2.60"
 User: Clicks notification → Add as "lxc-207-test"
 User: Clicks 🟢 allowed
-Hook: Now allows SSH to 10.71.20.60
+Hook: Now allows SSH to 192.0.2.60
 ```
 
 ### 2. IP change
 ```
-User: Changes LXC 202 IP: 10.71.20.51 → 10.71.20.61
-Hook: "10.71.20.61 unknown, blocked"
-App: User edits "lxc-202-n8n" → change IP to 10.71.20.61
+User: Changes LXC 202 IP: 192.0.2.51 → 192.0.2.61
+Hook: "192.0.2.61 unknown, blocked"
+App: User edits "lxc-202-n8n" → change IP to 192.0.2.61
 Hook: Now allows SSH to new IP
 ```
 
@@ -164,7 +163,7 @@ Hook: Now allows SSH to new IP
 ```
 User: Running risky operation on postgres
 User: Clicks "lxc-200-postgres" → 🔴 blocked
-Claude: Tries SSH → blocked
+AI: Tries SSH → blocked
 User: Operation complete
 User: Clicks "lxc-200-postgres" → ⚪ ask (safe default)
 ```

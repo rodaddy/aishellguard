@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/rico/ssh-guard/schemas/ssh-permissions.schema.json",
-  "title": "SSH Permissions State File",
-  "description": "Schema for SSHGuard authorization state file",
+  "$id": "https://github.com/aishellguard/aishellguard/schemas/ssh-permissions.schema.json",
+  "title": "AIShell Guard State File",
+  "description": "Schema for AIShell Guard authorization state file",
   "type": "object",
   "required": ["version", "machine", "hosts"],
   "properties": {
@@ -58,8 +58,7 @@
         },
         "user": {
           "type": "string",
-          "description": "Default SSH username for this host",
-          "default": "rico"
+          "description": "Default SSH username for this host"
         },
         "state": {
           "type": "string",

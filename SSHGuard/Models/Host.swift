@@ -15,7 +15,7 @@ struct Host: Codable, Identifiable, Equatable {
         id: String,
         hostname: String? = nil,
         ip: String,
-        user: String = "rico",
+        user: String = NSUserName(),
         state: SSHState = .ask,
         note: String? = nil,
         lastUsed: Date? = nil,
@@ -83,14 +83,16 @@ struct SSHPermissionsState: Codable {
     var hosts: [Host]
     var pending: [PendingHost]
     var groupOrder: [String]  // Custom group ordering (first tag)
+    var signature: String?  // HMAC-SHA256 of hosts array
 
     init(
         version: String = "1.0",
-        machine: String = "mac-studio",
+        machine: String = ProcessInfo.processInfo.hostName,
         lastUpdated: Date = Date(),
         hosts: [Host] = [],
         pending: [PendingHost] = [],
-        groupOrder: [String] = []
+        groupOrder: [String] = [],
+        signature: String? = nil
     ) {
         self.version = version
         self.machine = machine
@@ -98,6 +100,7 @@ struct SSHPermissionsState: Codable {
         self.hosts = hosts
         self.pending = pending
         self.groupOrder = groupOrder
+        self.signature = signature
     }
 
     /// Get groups in custom order (groups not in order appear at end alphabetically)

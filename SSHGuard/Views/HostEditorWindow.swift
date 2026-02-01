@@ -53,7 +53,7 @@ struct HostEditorView: View {
     @State private var id: String = ""
     @State private var hostname: String = ""
     @State private var ip: String = ""
-    @State private var user: String = "rico"
+    @State private var user: String = NSUserName()
     @State private var state: SSHState = .ask
     @State private var note: String = ""
     @State private var tagsText: String = ""

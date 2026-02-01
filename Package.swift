@@ -4,27 +4,27 @@
 import PackageDescription
 
 let package = Package(
-    name: "SSHGuard",
+    name: "AIShellGuard",
     platforms: [
         .macOS(.v13)
     ],
     products: [
         .executable(
-            name: "SSHGuard",
-            targets: ["SSHGuard"]
+            name: "AIShellGuard",
+            targets: ["AIShellGuard"]
         )
     ],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "SSHGuard",
+            name: "AIShellGuard",
             dependencies: [],
             path: "SSHGuard",
             resources: [.process("Resources")]
         ),
         .testTarget(
-            name: "SSHGuardTests",
-            dependencies: ["SSHGuard"],
+            name: "AIShellGuardTests",
+            dependencies: ["AIShellGuard"],
             path: "SSHGuardTests"
         )
     ]

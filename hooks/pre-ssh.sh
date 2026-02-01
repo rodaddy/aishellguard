@@ -1,5 +1,5 @@
 #!/bin/bash
-# pre-ssh.sh - SSHGuard hook for Claude Code
+# pre-ssh.sh - AIShell Guard hook for Claude Code
 #
 # Checks SSH authorization before allowing connection.
 # Integrates with menu bar app via shared state file.
@@ -12,14 +12,14 @@ set -euo pipefail
 # Configuration - check multiple locations in priority order
 get_state_file() {
     # 1. Environment variable override
-    if [[ -n "${SSHGUARD_STATE_FILE:-}" ]]; then
-        echo "$SSHGUARD_STATE_FILE"
+    if [[ -n "${AISHELLGUARD_STATE_FILE:-}" ]]; then
+        echo "$AISHELLGUARD_STATE_FILE"
         return
     fi
 
     # 2. Check macOS defaults (UserDefaults) for app-configured path
     local defaults_path
-    defaults_path=$(defaults read com.rodaddy.SSHGuard stateFilePath 2>/dev/null || echo "")
+    defaults_path=$(defaults read com.aishellguard.app stateFilePath 2>/dev/null || echo "")
     if [[ -n "$defaults_path" && -f "$defaults_path" ]]; then
         echo "$defaults_path"
         return
@@ -32,12 +32,12 @@ get_state_file() {
         return
     fi
 
-    # 4. Default to generic sshguard path
-    echo "${HOME}/.config/sshguard/hosts.json"
+    # 4. Default to generic aishellguard path
+    echo "${HOME}/.config/aishellguard/hosts.json"
 }
 
 STATE_FILE="$(get_state_file)"
-HOOK_LOG="${HOME}/.config/sshguard/hook.log"
+HOOK_LOG="${HOME}/.config/aishellguard/hook.log"
 
 # Ensure directories exist
 mkdir -p "$(dirname "$STATE_FILE")"
@@ -96,7 +96,7 @@ add_to_pending() {
     # Check if state file exists
     if [[ ! -f "$STATE_FILE" ]]; then
         log "WARN" "State file not found, creating empty state"
-        echo '{"version":"1.0","machine":"mac-studio","hosts":[],"pending":[]}' > "$STATE_FILE"
+        echo '{"version":"1.0","machine":"mac","hosts":[],"pending":[]}' > "$STATE_FILE"
     fi
 
     # Add to pending queue using jq
@@ -122,7 +122,7 @@ check_authorization() {
     # Check if state file exists
     if [[ ! -f "$STATE_FILE" ]]; then
         log "WARN" "State file not found at $STATE_FILE"
-        log "INFO" "Run SSHGuard app to initialize"
+        log "INFO" "Run AIShell Guard app to initialize"
         return 1
     fi
 
@@ -146,17 +146,17 @@ check_authorization() {
             return 0
             ;;
         "blocked")
-            log "ERROR" "🔴 SSH to $user@$host is BLOCKED by SSHGuard"
+            log "ERROR" "🔴 SSH to $user@$host is BLOCKED by AIShell Guard"
             return 1
             ;;
         "ask")
             log "WARN" "⚪ SSH to $user@$host requires confirmation"
-            log "INFO" "Open SSHGuard menu bar app to authorize"
+            log "INFO" "Open AIShell Guard menu bar app to authorize"
             return 1
             ;;
         "")
             log "WARN" "❓ Unknown host: $user@$host"
-            log "INFO" "Adding to pending queue - check SSHGuard app"
+            log "INFO" "Adding to pending queue - check AIShell Guard app"
             add_to_pending "$host" "$user"
             return 1
             ;;

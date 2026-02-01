@@ -65,6 +65,12 @@ class StateManager: ObservableObject {
         // Load or create initial state
         if let loadedState = Self.loadState(from: self.stateFilePath, decoder: Self.jsonDecoder) {
             self.state = loadedState
+            // If loaded state has no signature, sign it now (migration)
+            if loadedState.signature == nil {
+                Task {
+                    await self.save()  // This will add the signature
+                }
+            }
         } else {
             // Create empty state
             self.state = SSHPermissionsState()
@@ -86,6 +92,16 @@ class StateManager: ObservableObject {
         do {
             let data = try Data(contentsOf: url)
             let state = try decoder.decode(SSHPermissionsState.self, from: data)
+
+            // Verify signature if HMAC is enabled and signature present
+            if AppSettings.enableHMAC, let signature = state.signature {
+                if !HMACSigner.verifyHosts(state.hosts, signature: signature, encoder: Self.jsonEncoder) {
+                    print("⚠️ SIGNATURE VERIFICATION FAILED - State file may be tampered!")
+                    // Return nil to reject tampered file
+                    return nil
+                }
+            }
+
             return state
         } catch {
             print("Error loading state file: \(error)")
@@ -102,6 +118,17 @@ class StateManager: ObservableObject {
 
             // Update lastUpdated timestamp
             state.lastUpdated = Date()
+
+            // Sign the hosts array (if HMAC enabled)
+            if AppSettings.enableHMAC {
+                if let sig = HMACSigner.signHosts(state.hosts, encoder: Self.jsonEncoder) {
+                    state.signature = sig
+                } else {
+                    print("Warning: Failed to sign state file")
+                }
+            } else {
+                state.signature = nil  // Clear signature when HMAC disabled
+            }
 
             // Encode to JSON
             let data = try Self.jsonEncoder.encode(state)

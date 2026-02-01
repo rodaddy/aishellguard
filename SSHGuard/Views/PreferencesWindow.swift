@@ -1,81 +1,56 @@
 import SwiftUI
 import AppKit
 
-/// Main application entry point
-@main
-struct AIShellGuardApp: App {
-    @StateObject private var stateManager = StateManager()
-    @StateObject private var menuBarManager: MenuBarManager
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+/// Window controller for Preferences
+class PreferencesWindowController: NSWindowController, NSWindowDelegate {
+    static var shared: PreferencesWindowController?
 
-    init() {
-        let stateManager = StateManager()
-        _stateManager = StateObject(wrappedValue: stateManager)
-        _menuBarManager = StateObject(wrappedValue: MenuBarManager(stateManager: stateManager))
+    convenience init(stateManager: StateManager) {
+        let hostingController = NSHostingController(
+            rootView: PreferencesView(stateManager: stateManager)
+        )
+
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "SSHGuard Preferences"
+        window.styleMask = [.titled, .closable]
+        window.setContentSize(NSSize(width: 450, height: 320))
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+
+        self.init(window: window)
+        window.delegate = self
     }
 
-    var body: some Scene {
-        // Settings window only - menu bar is handled by MenuBarManager (AppKit)
-        Settings {
-            SettingsView(stateManager: stateManager)
+    static func showOrBring(stateManager: StateManager) {
+        if let existing = shared, existing.window?.isVisible == true {
+            existing.window?.makeKeyAndOrderFront(nil)
+        } else {
+            shared = PreferencesWindowController(stateManager: stateManager)
+            shared?.showWindow(nil)
         }
-    }
-}
 
-/// App delegate to handle window focus for menu bar apps
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Apply user preference for dock visibility
-        AppSettings.applyDockVisibility()
-    }
-}
+        WindowActivation.activate(window: shared?.window)
 
-/// Helper to properly activate windows from menu bar apps
-enum WindowActivation {
-    /// Activate app and bring window to front with keyboard focus
-    static func activate(window: NSWindow?) {
-        guard let window = window else { return }
-
-        // Temporarily become a regular app (shows in dock, can receive focus)
-        NSApp.setActivationPolicy(.regular)
-
-        // Activate and focus
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-
-        // Return to accessory after a delay (hides from dock again)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // Only go back to accessory if no windows are visible
-            let hasVisibleWindows = NSApp.windows.contains { $0.isVisible && !$0.title.isEmpty }
-            if !hasVisibleWindows {
-                NSApp.setActivationPolicy(.accessory)
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            shared?.window?.level = .normal
         }
     }
 
-    /// Call when closing the last window to return to accessory mode
-    static func windowClosed() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let hasVisibleWindows = NSApp.windows.contains { $0.isVisible && $0.title.count > 0 }
-            if !hasVisibleWindows {
-                NSApp.setActivationPolicy(.accessory)
-            }
-        }
+    func windowWillClose(_ notification: Notification) {
+        WindowActivation.windowClosed()
     }
 }
 
-/// Settings view with tabbed preferences
-struct SettingsView: View {
+/// Preferences view with tabs
+struct PreferencesView: View {
     @ObservedObject var stateManager: StateManager
     @State private var selectedIconStyle: MenuBarIconStyle = AppSettings.menuBarIconStyle
     @State private var showInDock: Bool = AppSettings.showInDock
 
     var body: some View {
         TabView {
-            // General Tab
-            GeneralSettingsTab(
-                selectedIconStyle: $selectedIconStyle,
+            GeneralPreferencesTab(
                 showInDock: $showInDock,
                 stateManager: stateManager
             )
@@ -83,15 +58,14 @@ struct SettingsView: View {
                 Label("General", systemImage: "gear")
             }
 
-            // Appearance Tab
-            AppearanceSettingsTab(
+            AppearancePreferencesTab(
                 selectedIconStyle: $selectedIconStyle
             )
             .tabItem {
                 Label("Appearance", systemImage: "paintbrush")
             }
         }
-        .frame(width: 450, height: 300)
+        .padding()
         .onChange(of: selectedIconStyle) { newValue in
             AppSettings.menuBarIconStyle = newValue
             NotificationCenter.default.post(name: .menuBarIconChanged, object: nil)
@@ -102,18 +76,39 @@ struct SettingsView: View {
     }
 }
 
-/// General settings tab
-struct GeneralSettingsTab: View {
-    @Binding var selectedIconStyle: MenuBarIconStyle
+/// General preferences tab
+struct GeneralPreferencesTab: View {
     @Binding var showInDock: Bool
     @ObservedObject var stateManager: StateManager
     @State private var showFileChooser = false
+    @State private var enableHMAC: Bool = AppSettings.enableHMAC
+    @State private var originalDockSetting: Bool = AppSettings.showInDock
 
     var body: some View {
         Form {
             Section("Behavior") {
                 Toggle("Show in Dock", isOn: $showInDock)
-                    .help("Show AIShell Guard icon in the Dock")
+                    .help("Show SSHGuard icon in the Dock (requires restart)")
+                if showInDock != originalDockSetting {
+                    Button("⚡ Restart to Apply") {
+                        restartApp()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+
+            Section("Security") {
+                Toggle("Enable HMAC Signing", isOn: $enableHMAC)
+                    .help("Sign state file to prevent tampering. Disable during development.")
+                    .onChange(of: enableHMAC) { newValue in
+                        AppSettings.enableHMAC = newValue
+                    }
+                if !enableHMAC {
+                    Text("⚠️ File tampering protection disabled")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
             }
 
             Section("State File") {
@@ -144,17 +139,41 @@ struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
-        .fileImporter(isPresented: $showFileChooser, allowedContentTypes: [.json]) { result in
-            if case .success(let url) = result {
+        .fileImporter(isPresented: $showFileChooser, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result, let url = urls.first {
                 AppSettings.stateFilePath = url
             }
         }
     }
+
+    /// Restart the application
+    private func restartApp() {
+        guard let executableURL = Bundle.main.executableURL else {
+            print("Could not get executable URL")
+            return
+        }
+
+        // Launch a new instance
+        let task = Process()
+        task.executableURL = executableURL
+        task.arguments = []
+
+        do {
+            try task.run()
+        } catch {
+            print("Failed to relaunch: \(error)")
+            return
+        }
+
+        // Terminate current instance after brief delay to let new one start
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApplication.shared.terminate(nil)
+        }
+    }
 }
 
-/// Appearance settings tab with icon preview
-struct AppearanceSettingsTab: View {
+/// Appearance preferences tab with icon preview
+struct AppearancePreferencesTab: View {
     @Binding var selectedIconStyle: MenuBarIconStyle
 
     var body: some View {
@@ -164,15 +183,14 @@ struct AppearanceSettingsTab: View {
                     ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
                         HStack {
                             iconPreview(for: style)
-                                .frame(width: 20, height: 20)
-                            Text(style.rawValue)
+                                .frame(width: 18, height: 18)
+                            Text(style.displayName)
                         }
                         .tag(style)
                     }
                 }
                 .pickerStyle(.radioGroup)
 
-                // Large preview
                 HStack {
                     Text("Preview:")
                     Spacer()
@@ -185,7 +203,6 @@ struct AppearanceSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
     }
 
     @ViewBuilder
@@ -195,21 +212,37 @@ struct AppearanceSettingsTab: View {
             if let url = Bundle.module.url(forResource: "MenuBar-Globe-Dark-18", withExtension: "png"),
                let image = NSImage(contentsOf: url) {
                 Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: "globe")
             }
         case .globeLight:
             if let url = Bundle.module.url(forResource: "MenuBar-Globe-Light-18", withExtension: "png"),
                let image = NSImage(contentsOf: url) {
                 Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: "globe")
             }
         case .padlockDark:
             if let url = Bundle.module.url(forResource: "MenuBar-Padlock-Dark-18", withExtension: "png"),
                let image = NSImage(contentsOf: url) {
                 Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: "lock.fill")
             }
         case .padlockLight:
             if let url = Bundle.module.url(forResource: "MenuBar-Padlock-Light-18", withExtension: "png"),
                let image = NSImage(contentsOf: url) {
                 Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: "lock.fill")
             }
         case .systemSymbol:
             Image(systemName: "lock.shield")

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="SSHGuard"
+APP_NAME="AIShellGuard"
 
 # Colors
 GREEN='\033[0;32m'
@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo "========================================="
-echo "SSHGuard Installation"
+echo "AIShell Guard Installation"
 echo "========================================="
 
 # Check if jq is installed
@@ -43,7 +43,7 @@ echo ""
 echo "Step 2: Installing pre-ssh hook..."
 
 HOOK_SOURCE="$PROJECT_ROOT/hooks/pre-ssh.sh"
-HOOK_DEST="$HOME/.config/pai-private/hooks/pre-ssh.sh"
+HOOK_DEST="$HOME/.config/aishellguard/hooks/pre-ssh.sh"
 
 mkdir -p "$(dirname "$HOOK_DEST")"
 
@@ -60,8 +60,8 @@ echo -e "${GREEN}✓${NC} Hook installed: $HOOK_DEST"
 echo ""
 echo "Step 3: Setting up state file..."
 
-STATE_DIR="$HOME/.config/pai/infrastructure"
-STATE_FILE="$STATE_DIR/ssh-permissions.json"
+STATE_DIR="$HOME/.config/aishellguard"
+STATE_FILE="$STATE_DIR/hosts.json"
 
 mkdir -p "$STATE_DIR"
 
@@ -74,7 +74,7 @@ else
 fi
 
 # Create log directory
-mkdir -p "$HOME/.config/pai/logs"
+mkdir -p "$HOME/.config/aishellguard/logs"
 
 # Install app
 echo ""
@@ -108,7 +108,7 @@ fi
 
 # Add to login items (optional)
 echo ""
-read -p "Add SSHGuard to Login Items (start at boot)? [y/N] " -n 1 -r
+read -p "Add AIShell Guard to Login Items (start at boot)? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$APP_DEST\", hidden:false}"
@@ -122,7 +122,7 @@ echo "Installation Complete!"
 echo "========================================="
 echo ""
 echo "Next steps:"
-echo "  1. Start SSHGuard: open ~/Applications/SSHGuard.app"
+echo "  1. Start AIShell Guard: open ~/Applications/AIShellGuard.app"
 echo "  2. Look for the network icon in menu bar"
 echo "  3. Configure host authorizations"
 echo ""
@@ -133,5 +133,5 @@ echo "State file location:"
 echo "  $STATE_FILE"
 echo ""
 echo "Hook log:"
-echo "  ~/.config/pai/logs/ssh-guard-hook.log"
+echo "  ~/.config/aishellguard/logs/ssh-guard-hook.log"
 echo ""

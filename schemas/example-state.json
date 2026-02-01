@@ -1,72 +1,72 @@
 {
   "version": "1.0",
-  "machine": "mac-studio",
+  "machine": "example-mac",
   "lastUpdated": "2026-01-31T23:55:00Z",
   "hosts": [
     {
-      "id": "proxmox02",
-      "hostname": "proxmox02",
-      "ip": "10.71.1.8",
-      "user": "rico",
+      "id": "server-01",
+      "hostname": "server-01",
+      "ip": "192.0.2.10",
+      "user": "admin",
       "state": "allowed",
-      "note": "Primary Proxmox host - homelab infrastructure",
+      "note": "Primary server",
       "lastUsed": "2026-01-31T14:30:00Z",
-      "tags": ["homelab", "proxmox", "infrastructure"]
+      "tags": ["homelab", "infrastructure"]
     },
     {
-      "id": "lxc-202-n8n",
-      "hostname": "n8n",
-      "ip": "10.71.20.51",
+      "id": "automation-01",
+      "hostname": "automation-01",
+      "ip": "192.0.2.20",
       "user": "root",
       "state": "allowed",
-      "note": "n8n automation server (ai-second-brain)",
+      "note": "Automation server",
       "lastUsed": "2026-01-30T09:15:00Z",
-      "tags": ["lxc", "n8n", "automation", "second-brain"]
+      "tags": ["automation", "workflows"]
     },
     {
-      "id": "lxc-203-siyuan",
-      "hostname": "siyuan",
-      "ip": "10.71.20.52",
+      "id": "docs-01",
+      "hostname": "docs-01",
+      "ip": "192.0.2.30",
       "user": "root",
       "state": "allowed",
-      "note": "SiYuan knowledge base (ai-second-brain)",
+      "note": "Documentation server",
       "lastUsed": "2026-01-29T16:45:00Z",
-      "tags": ["lxc", "siyuan", "knowledge-base", "second-brain"]
+      "tags": ["documentation", "knowledge-base"]
     },
     {
-      "id": "lxc-200-postgres",
-      "hostname": "postgres",
-      "ip": "10.71.20.49",
+      "id": "database-01",
+      "hostname": "database-01",
+      "ip": "192.0.2.40",
       "user": "postgres",
       "state": "ask",
-      "note": "Production PostgreSQL + pgvector - ask before connecting",
+      "note": "PostgreSQL database - ask before connecting",
       "lastUsed": null,
-      "tags": ["lxc", "database", "production", "postgresql"]
+      "tags": ["database", "production", "postgresql"]
     },
     {
-      "id": "lxc-204-clawdbot",
-      "hostname": "clawdbot",
-      "ip": "10.71.20.53",
+      "id": "bot-01",
+      "hostname": "bot-01",
+      "ip": "192.0.2.50",
       "user": "root",
       "state": "allowed",
-      "note": "Discord bot for thought capture",
+      "note": "Discord bot server",
       "lastUsed": "2026-01-28T11:20:00Z",
-      "tags": ["lxc", "discord", "bot", "second-brain"]
+      "tags": ["discord", "bot"]
     },
     {
-      "id": "lxc-205-reverse-proxy",
-      "hostname": "reverse_proxy",
-      "ip": "10.71.20.55",
+      "id": "proxy-01",
+      "hostname": "proxy-01",
+      "ip": "192.0.2.60",
       "user": "root",
       "state": "blocked",
       "note": "Nginx reverse proxy - rarely need direct access",
       "lastUsed": "2026-01-15T08:00:00Z",
-      "tags": ["lxc", "nginx", "proxy", "infrastructure"]
+      "tags": ["nginx", "proxy", "infrastructure"]
     }
   ],
   "pending": [
     {
-      "ip": "10.71.20.99",
+      "ip": "192.0.2.99",
       "user": "root",
       "detectedAt": "2026-01-31T23:45:00Z",
       "attemptedBy": "claude-code"

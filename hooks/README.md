@@ -1,4 +1,4 @@
-# SSHGuard Hooks
+# AIShell Guard Hooks
 
 ## pre-ssh.sh
 
@@ -14,15 +14,15 @@ Claude Code → Bash tool → pre-ssh hook → checks state file → allow/block
 
 **Automatic (via install script):**
 ```bash
-cd ~/Development/ssh-guard
+cd /path/to/aishellguard
 ./scripts/install.sh
 ```
 
 **Manual:**
 ```bash
 # Symlink to Claude Code hooks directory
-ln -sf ~/Development/ssh-guard/hooks/pre-ssh.sh \
-       ~/.config/pai-private/hooks/pre-ssh.sh
+ln -sf /path/to/aishellguard/hooks/pre-ssh.sh \
+       ~/.config/aishellguard/hooks/pre-ssh.sh
 ```
 
 ### Testing
@@ -30,21 +30,21 @@ ln -sf ~/Development/ssh-guard/hooks/pre-ssh.sh \
 **Test the hook directly:**
 ```bash
 # Test allowed host
-~/Development/ssh-guard/hooks/pre-ssh.sh ssh rico@10.71.1.8
-# Expected: ✅ SSH to rico@10.71.1.8 is ALLOWED (exit 0)
+/path/to/aishellguard/hooks/pre-ssh.sh ssh user@192.0.2.8
+# Expected: ✅ SSH to user@192.0.2.8 is ALLOWED (exit 0)
 
 # Test unknown host
-~/Development/ssh-guard/hooks/pre-ssh.sh ssh rico@10.71.20.99
+/path/to/aishellguard/hooks/pre-ssh.sh ssh user@192.0.2.99
 # Expected: ❓ Unknown host, added to pending (exit 1)
 
 # Test blocked host
-~/Development/ssh-guard/hooks/pre-ssh.sh ssh root@10.71.20.55
-# Expected: 🔴 SSH to root@10.71.20.55 is BLOCKED (exit 1)
+/path/to/aishellguard/hooks/pre-ssh.sh ssh root@192.0.2.55
+# Expected: 🔴 SSH to root@192.0.2.55 is BLOCKED (exit 1)
 ```
 
 **Check the log:**
 ```bash
-tail -f ~/.config/pai/logs/ssh-guard-hook.log
+tail -f ~/.config/aishellguard/logs/aishellguard-hook.log
 ```
 
 ### Hook Behavior
@@ -58,22 +58,22 @@ tail -f ~/.config/pai/logs/ssh-guard-hook.log
 
 ### State File Location
 
-**Reads from:** `~/.config/pai/infrastructure/ssh-permissions.json`
+**Reads from:** `~/.config/aishellguard/hosts.json`
 
 If the file doesn't exist, the hook:
 1. Creates empty state file
 2. Blocks the SSH attempt
 3. Adds host to pending queue
-4. Prompts to run SSHGuard app
+4. Prompts to run AIShell Guard app
 
 ### Logging
 
-**Log location:** `~/.config/pai/logs/ssh-guard-hook.log`
+**Log location:** `~/.config/aishellguard/logs/aishellguard-hook.log`
 
 **Log format:**
 ```
-[2026-01-31T23:55:00Z] [INFO] SSH attempt: rico@10.71.1.8
-[2026-01-31T23:55:00Z] [INFO] ✅ SSH to rico@10.71.1.8 is ALLOWED
+[2026-01-31T23:55:00Z] [INFO] SSH attempt: user@192.0.2.8
+[2026-01-31T23:55:00Z] [INFO] ✅ SSH to user@192.0.2.8 is ALLOWED
 ```
 
 **Log levels:**
@@ -95,19 +95,19 @@ If the file doesn't exist, the hook:
 **Hook not running:**
 ```bash
 # Check if symlink exists
-ls -la ~/.config/pai-private/hooks/pre-ssh.sh
+ls -la ~/.config/aishellguard/hooks/pre-ssh.sh
 
 # Check if hook is executable
-ls -l ~/Development/ssh-guard/hooks/pre-ssh.sh
+ls -l /path/to/aishellguard/hooks/pre-ssh.sh
 ```
 
 **Hook always blocks:**
 ```bash
 # Check state file exists
-cat ~/.config/pai/infrastructure/ssh-permissions.json
+cat ~/.config/aishellguard/hosts.json
 
 # Validate JSON
-jq . ~/.config/pai/infrastructure/ssh-permissions.json
+jq . ~/.config/aishellguard/hosts.json
 ```
 
 **Can't find jq:**
@@ -122,11 +122,11 @@ brew install jq
 
 ```bash
 # Temporary: Remove hook symlink
-rm ~/.config/pai-private/hooks/pre-ssh.sh
+rm ~/.config/aishellguard/hooks/pre-ssh.sh
 
 # After emergency, restore:
-ln -sf ~/Development/ssh-guard/hooks/pre-ssh.sh \
-       ~/.config/pai-private/hooks/pre-ssh.sh
+ln -sf /path/to/aishellguard/hooks/pre-ssh.sh \
+       ~/.config/aishellguard/hooks/pre-ssh.sh
 ```
 
 **Or edit state file manually:**
@@ -134,15 +134,15 @@ ln -sf ~/Development/ssh-guard/hooks/pre-ssh.sh \
 # Add host to allowed state
 jq '.hosts += [{
   "id": "emergency-host",
-  "ip": "10.71.20.99",
-  "user": "rico",
+  "ip": "192.0.2.99",
+  "user": "$USER",
   "state": "allowed",
   "note": "Emergency access"
-}]' ~/.config/pai/infrastructure/ssh-permissions.json \
-  > ~/.config/pai/infrastructure/ssh-permissions.json.tmp
+}]' ~/.config/aishellguard/hosts.json \
+  > ~/.config/aishellguard/hosts.json.tmp
 
-mv ~/.config/pai/infrastructure/ssh-permissions.json.tmp \
-   ~/.config/pai/infrastructure/ssh-permissions.json
+mv ~/.config/aishellguard/hosts.json.tmp \
+   ~/.config/aishellguard/hosts.json
 ```
 
 ## Future Hooks
