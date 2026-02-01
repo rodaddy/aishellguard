@@ -71,13 +71,18 @@ struct ManageHostsView: View {
 
                 Divider()
 
-                // Host list grouped
+                // Host list grouped with drag & drop
                 List(selection: $selectedHostID) {
                     ForEach(groupedHosts, id: \.key) { group, hosts in
-                        Section(header: Text(group.uppercased()).font(.caption).foregroundColor(.secondary)) {
+                        Section(header: GroupHeaderView(
+                            group: group,
+                            stateManager: stateManager,
+                            onUpdate: onUpdate
+                        )) {
                             ForEach(hosts) { host in
                                 HostRowView(host: host, stateManager: stateManager, onUpdate: onUpdate)
                                     .tag(host.id)
+                                    .draggable(host.id) // Make hosts draggable by ID
                             }
                         }
                     }
@@ -178,6 +183,63 @@ struct ManageHostsView: View {
         Task {
             await stateManager.removeHost(id: id)
             selectedHostID = nil
+            onUpdate()
+        }
+    }
+}
+
+/// Group header that accepts dropped hosts
+struct GroupHeaderView: View {
+    let group: String
+    @ObservedObject var stateManager: StateManager
+    let onUpdate: () -> Void
+
+    @State private var isTargeted = false
+
+    var body: some View {
+        Text(group.uppercased())
+            .font(.caption)
+            .foregroundColor(isTargeted ? .accentColor : .secondary)
+            .fontWeight(isTargeted ? .bold : .regular)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
+            .background(isTargeted ? Color.accentColor.opacity(0.2) : Color.clear)
+            .cornerRadius(4)
+            .dropDestination(for: String.self) { hostIDs, _ in
+                // Move dropped hosts to this group
+                for hostID in hostIDs {
+                    moveHost(id: hostID, toGroup: group)
+                }
+                return true
+            } isTargeted: { targeted in
+                isTargeted = targeted
+            }
+    }
+
+    private func moveHost(id: String, toGroup: String) {
+        guard let host = stateManager.state.findHost(byID: id) else { return }
+
+        // Build new tags: new group first, then other tags
+        var newTags: [String] = []
+        if toGroup != "ungrouped" {
+            newTags.append(toGroup)
+        }
+        let otherTags = host.tags.dropFirst()
+        newTags.append(contentsOf: otherTags)
+
+        let updatedHost = Host(
+            id: host.id,
+            hostname: host.hostname,
+            ip: host.ip,
+            user: host.user,
+            state: host.state,
+            note: host.note,
+            lastUsed: host.lastUsed,
+            tags: newTags
+        )
+
+        Task {
+            await stateManager.upsertHost(updatedHost)
             onUpdate()
         }
     }
@@ -389,9 +451,7 @@ struct HostEditorSheet: View {
     @State private var state: SSHState = .ask
     @State private var note: String = ""
     @State private var selectedGroup: String = ""
-    @State private var newGroupName: String = ""
     @State private var additionalTags: String = ""
-    @State private var showNewGroupField = false
 
     init(host: Host?, stateManager: StateManager, onSave: @escaping () -> Void) {
         self.existingHost = host
@@ -444,41 +504,30 @@ struct HostEditorSheet: View {
                 }
 
                 Section("Organization") {
-                    // Group picker
+                    // Combo box style: type or pick from menu
                     HStack {
                         Text("Group:")
-                        Picker("", selection: $selectedGroup) {
-                            Text("None").tag("")
-                            ForEach(existingGroups, id: \.self) { group in
-                                Text(group).tag(group)
-                            }
-                            Divider()
-                            Text("➕ Create New Group...").tag("__new__")
-                        }
-                        .onChange(of: selectedGroup) { newValue in
-                            if newValue == "__new__" {
-                                showNewGroupField = true
+                        TextField("Type or select...", text: $selectedGroup)
+                            .textFieldStyle(.roundedBorder)
+
+                        Menu {
+                            Button("None (ungrouped)") {
                                 selectedGroup = ""
                             }
-                        }
-                    }
-
-                    if showNewGroupField {
-                        HStack {
-                            TextField("New group name:", text: $newGroupName)
-                            Button("Add") {
-                                if !newGroupName.isEmpty {
-                                    selectedGroup = newGroupName.lowercased()
-                                    newGroupName = ""
-                                    showNewGroupField = false
+                            Divider()
+                            ForEach(existingGroups, id: \.self) { group in
+                                Button(group) {
+                                    selectedGroup = group
                                 }
                             }
-                            Button("Cancel") {
-                                showNewGroupField = false
-                                newGroupName = ""
-                            }
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.secondary)
                         }
+                        .menuStyle(.borderlessButton)
+                        .frame(width: 24)
                     }
+                    .help("Type a new group name or pick from existing")
 
                     TextField("Additional Tags:", text: $additionalTags)
                         .help("Comma-separated extra tags (optional)")
