@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "machine": "mac-studio",
+  "lastUpdated": "2026-01-31T23:55:00Z",
+  "hosts": [
+    {
+      "id": "proxmox02",
+      "hostname": "proxmox02",
+      "ip": "10.71.1.8",
+      "user": "rico",
+      "state": "allowed",
+      "note": "Primary Proxmox host - homelab infrastructure",
+      "lastUsed": "2026-01-31T14:30:00Z",
+      "tags": ["homelab", "proxmox", "infrastructure"]
+    },
+    {
+      "id": "lxc-202-n8n",
+      "hostname": "n8n",
+      "ip": "10.71.20.51",
+      "user": "root",
+      "state": "allowed",
+      "note": "n8n automation server (ai-second-brain)",
+      "lastUsed": "2026-01-30T09:15:00Z",
+      "tags": ["lxc", "n8n", "automation", "second-brain"]
+    },
+    {
+      "id": "lxc-203-siyuan",
+      "hostname": "siyuan",
+      "ip": "10.71.20.52",
+      "user": "root",
+      "state": "allowed",
+      "note": "SiYuan knowledge base (ai-second-brain)",
+      "lastUsed": "2026-01-29T16:45:00Z",
+      "tags": ["lxc", "siyuan", "knowledge-base", "second-brain"]
+    },
+    {
+      "id": "lxc-200-postgres",
+      "hostname": "postgres",
+      "ip": "10.71.20.49",
+      "user": "postgres",
+      "state": "ask",
+      "note": "Production PostgreSQL + pgvector - ask before connecting",
+      "lastUsed": null,
+      "tags": ["lxc", "database", "production", "postgresql"]
+    },
+    {
+      "id": "lxc-204-clawdbot",
+      "hostname": "clawdbot",
+      "ip": "10.71.20.53",
+      "user": "root",
+      "state": "allowed",
+      "note": "Discord bot for thought capture",
+      "lastUsed": "2026-01-28T11:20:00Z",
+      "tags": ["lxc", "discord", "bot", "second-brain"]
+    },
+    {
+      "id": "lxc-205-reverse-proxy",
+      "hostname": "reverse_proxy",
+      "ip": "10.71.20.55",
+      "user": "root",
+      "state": "blocked",
+      "note": "Nginx reverse proxy - rarely need direct access",
+      "lastUsed": "2026-01-15T08:00:00Z",
+      "tags": ["lxc", "nginx", "proxy", "infrastructure"]
+    }
+  ],
+  "pending": [
+    {
+      "ip": "10.71.20.99",
+      "user": "root",
+      "detectedAt": "2026-01-31T23:45:00Z",
+      "attemptedBy": "claude-code"
+    }
+  ]
+}

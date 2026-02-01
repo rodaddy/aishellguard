@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/rico/ssh-guard/schemas/ssh-permissions.schema.json",
+  "title": "SSH Permissions State File",
+  "description": "Schema for SSHGuard authorization state file",
+  "type": "object",
+  "required": ["version", "machine", "hosts"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version for future compatibility",
+      "pattern": "^\\d+\\.\\d+$",
+      "default": "1.0"
+    },
+    "machine": {
+      "type": "string",
+      "description": "Machine identifier (e.g., 'mac-studio', 'mac-air')"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last state file modification"
+    },
+    "hosts": {
+      "type": "array",
+      "description": "List of known SSH hosts with authorization states",
+      "items": {
+        "$ref": "#/definitions/host"
+      }
+    },
+    "pending": {
+      "type": "array",
+      "description": "Queue of unknown hosts awaiting authorization",
+      "items": {
+        "$ref": "#/definitions/pendingHost"
+      },
+      "default": []
+    }
+  },
+  "definitions": {
+    "host": {
+      "type": "object",
+      "required": ["id", "ip", "state"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier (doesn't change if IP changes)",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Friendly hostname (e.g., 'proxmox02', 'n8n')"
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP address or hostname for SSH connection",
+          "pattern": "^(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|[a-z0-9.-]+)$"
+        },
+        "user": {
+          "type": "string",
+          "description": "Default SSH username for this host",
+          "default": "rico"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["allowed", "ask", "blocked"],
+          "description": "Authorization state: allowed (green), ask (grey), blocked (red)"
+        },
+        "note": {
+          "type": "string",
+          "description": "User note about this host (e.g., 'Production database - caution')"
+        },
+        "lastUsed": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of last SSH connection attempt"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for grouping (e.g., 'lxc', 'production', 'homelab')",
+          "default": []
+        }
+      }
+    },
+    "pendingHost": {
+      "type": "object",
+      "required": ["ip", "detectedAt"],
+      "properties": {
+        "ip": {
+          "type": "string",
+          "description": "IP address or hostname of unknown host"
+        },
+        "user": {
+          "type": "string",
+          "description": "SSH username used in attempt"
+        },
+        "detectedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when SSH attempt was detected"
+        },
+        "attemptedBy": {
+          "type": "string",
+          "description": "Source of SSH attempt (e.g., 'claude-code', 'manual')",
+          "default": "unknown"
+        }
+      }
+    }
+  }
+}
