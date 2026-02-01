@@ -89,6 +89,13 @@ class MenuBarManager: ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
+        // Management
+        let addHostItem = NSMenuItem(title: "Add Host...", action: #selector(handleAddHost), keyEquivalent: "n")
+        addHostItem.target = self
+        menu.addItem(addHostItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         // Actions
         let reloadItem = NSMenuItem(title: "Reload State", action: #selector(handleReload), keyEquivalent: "r")
         reloadItem.target = self
@@ -143,6 +150,16 @@ class MenuBarManager: ObservableObject {
 
         submenu.addItem(NSMenuItem.separator())
 
+        // Edit host
+        let editItem = NSMenuItem(
+            title: "Edit...",
+            action: #selector(handleEditHost(_:)),
+            keyEquivalent: ""
+        )
+        editItem.target = self
+        editItem.representedObject = host.id
+        submenu.addItem(editItem)
+
         // Copy SSH command
         let copyItem = NSMenuItem(
             title: "Copy SSH Command",
@@ -152,6 +169,8 @@ class MenuBarManager: ObservableObject {
         copyItem.target = self
         copyItem.representedObject = host.sshTarget
         submenu.addItem(copyItem)
+
+        submenu.addItem(NSMenuItem.separator())
 
         // Remove host
         let removeItem = NSMenuItem(
@@ -291,6 +310,35 @@ class MenuBarManager: ObservableObject {
             await stateManager.reload()
             updateMenu()
         }
+    }
+
+    @objc private func handleAddHost() {
+        let windowController = HostEditorWindowController(
+            host: nil,
+            stateManager: stateManager,
+            onSave: { [weak self] in
+                self?.updateMenu()
+            }
+        )
+        windowController.showWindow(nil)
+        windowController.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func handleEditHost(_ sender: NSMenuItem) {
+        guard let hostID = sender.representedObject as? String,
+              let host = stateManager.state.findHost(byID: hostID) else { return }
+
+        let windowController = HostEditorWindowController(
+            host: host,
+            stateManager: stateManager,
+            onSave: { [weak self] in
+                self?.updateMenu()
+            }
+        )
+        windowController.showWindow(nil)
+        windowController.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func handleQuit() {
