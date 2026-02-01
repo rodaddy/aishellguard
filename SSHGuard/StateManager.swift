@@ -59,11 +59,8 @@ class StateManager: ObservableObject {
     // MARK: - Initialization
 
     init(stateFilePath: URL? = nil) {
-        // Default to PAI infrastructure directory
-        let defaultPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/pai/infrastructure/ssh-permissions.json")
-
-        self.stateFilePath = stateFilePath ?? defaultPath
+        // Use provided path, or get from settings (which auto-detects PAI vs default)
+        self.stateFilePath = stateFilePath ?? AppSettings.stateFilePath
 
         // Load or create initial state
         if let loadedState = Self.loadState(from: self.stateFilePath, decoder: Self.jsonDecoder) {

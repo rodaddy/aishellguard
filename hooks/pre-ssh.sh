@@ -9,11 +9,38 @@
 
 set -euo pipefail
 
-# Configuration
-STATE_FILE="${HOME}/.config/pai/infrastructure/ssh-permissions.json"
-HOOK_LOG="${HOME}/.config/pai/logs/ssh-guard-hook.log"
+# Configuration - check multiple locations in priority order
+get_state_file() {
+    # 1. Environment variable override
+    if [[ -n "${SSHGUARD_STATE_FILE:-}" ]]; then
+        echo "$SSHGUARD_STATE_FILE"
+        return
+    fi
 
-# Ensure log directory exists
+    # 2. Check macOS defaults (UserDefaults) for app-configured path
+    local defaults_path
+    defaults_path=$(defaults read com.rodaddy.SSHGuard stateFilePath 2>/dev/null || echo "")
+    if [[ -n "$defaults_path" && -f "$defaults_path" ]]; then
+        echo "$defaults_path"
+        return
+    fi
+
+    # 3. Check PAI infrastructure path (for PAI users)
+    local pai_path="${HOME}/.config/pai/infrastructure/ssh-permissions.json"
+    if [[ -f "$pai_path" ]]; then
+        echo "$pai_path"
+        return
+    fi
+
+    # 4. Default to generic sshguard path
+    echo "${HOME}/.config/sshguard/hosts.json"
+}
+
+STATE_FILE="$(get_state_file)"
+HOOK_LOG="${HOME}/.config/sshguard/hook.log"
+
+# Ensure directories exist
+mkdir -p "$(dirname "$STATE_FILE")"
 mkdir -p "$(dirname "$HOOK_LOG")"
 
 # Extract SSH target from command line
