@@ -13,13 +13,7 @@ struct SSHGuardApp: App {
     }
 
     var body: some Scene {
-        // Menu bar app - no window needed
-        MenuBarExtra("SSHGuard", systemImage: "network") {
-            EmptyView()
-        }
-        .menuBarExtraStyle(.window)
-
-        // Settings window (optional, for future use)
+        // Settings window only - menu bar is handled by MenuBarManager (AppKit)
         Settings {
             SettingsView(stateManager: stateManager)
         }

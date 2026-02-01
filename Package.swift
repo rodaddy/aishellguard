@@ -19,7 +19,8 @@ let package = Package(
         .executableTarget(
             name: "SSHGuard",
             dependencies: [],
-            path: "SSHGuard"
+            path: "SSHGuard",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "SSHGuardTests",

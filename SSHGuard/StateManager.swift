@@ -13,34 +13,45 @@ class StateManager: ObservableObject {
     let stateFilePath: URL
     private let fileManager = FileManager.default
 
-    /// ISO 8601 date formatter for JSON
-    private let dateFormatter: ISO8601DateFormatter = {
+    /// ISO 8601 date formatter with fractional seconds (for writing)
+    private static let dateFormatterWithFractional: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
 
+    /// ISO 8601 date formatter without fractional seconds (for reading legacy)
+    private static let dateFormatterBasic: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
     /// JSON encoder with custom date formatting
-    private lazy var jsonEncoder: JSONEncoder = {
+    private static let jsonEncoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
-            try container.encode(self.dateFormatter.string(from: date))
+            try container.encode(StateManager.dateFormatterWithFractional.string(from: date))
         }
         return encoder
     }()
 
-    /// JSON decoder with custom date parsing
-    private lazy var jsonDecoder: JSONDecoder = {
+    /// JSON decoder with flexible date parsing (handles with/without fractional seconds)
+    private static let jsonDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            if let date = self.dateFormatter.date(from: dateString) {
+            // Try with fractional seconds first, then without
+            if let date = StateManager.dateFormatterWithFractional.date(from: dateString) {
                 return date
             }
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date format")
+            if let date = StateManager.dateFormatterBasic.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date format: \(dateString)")
         }
         return decoder
     }()
@@ -55,7 +66,7 @@ class StateManager: ObservableObject {
         self.stateFilePath = stateFilePath ?? defaultPath
 
         // Load or create initial state
-        if let loadedState = Self.loadState(from: self.stateFilePath, decoder: jsonDecoder) {
+        if let loadedState = Self.loadState(from: self.stateFilePath, decoder: Self.jsonDecoder) {
             self.state = loadedState
         } else {
             // Create empty state
@@ -96,7 +107,7 @@ class StateManager: ObservableObject {
             state.lastUpdated = Date()
 
             // Encode to JSON
-            let data = try jsonEncoder.encode(state)
+            let data = try Self.jsonEncoder.encode(state)
 
             // Atomic write (write to temp, then rename)
             let tempPath = stateFilePath.appendingPathExtension("tmp")
@@ -117,7 +128,7 @@ class StateManager: ObservableObject {
 
     /// Reload state from disk
     func reload() async {
-        if let loadedState = Self.loadState(from: stateFilePath, decoder: jsonDecoder) {
+        if let loadedState = Self.loadState(from: stateFilePath, decoder: Self.jsonDecoder) {
             state = loadedState
             error = nil
         } else {

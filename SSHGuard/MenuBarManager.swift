@@ -47,19 +47,43 @@ class MenuBarManager: ObservableObject {
             menu.addItem(NSMenuItem.separator())
         }
 
-        // Known hosts section
-        let hostsTitle = NSMenuItem(title: "Known Hosts", action: nil, keyEquivalent: "")
-        hostsTitle.isEnabled = false
-        menu.addItem(hostsTitle)
-
+        // Known hosts section - grouped by first tag
         let sortedHosts = stateManager.sortedHosts
         if sortedHosts.isEmpty {
+            let hostsTitle = NSMenuItem(title: "Known Hosts", action: nil, keyEquivalent: "")
+            hostsTitle.isEnabled = false
+            menu.addItem(hostsTitle)
+
             let emptyItem = NSMenuItem(title: "  No hosts configured", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
         } else {
-            for host in sortedHosts {
-                menu.addItem(createHostItem(host))
+            // Group hosts by first tag
+            let grouped = Dictionary(grouping: sortedHosts) { host -> String in
+                host.tags.first ?? "ungrouped"
+            }
+
+            // Sort group names, but put "ungrouped" last
+            let sortedGroups = grouped.keys.sorted { lhs, rhs in
+                if lhs == "ungrouped" { return false }
+                if rhs == "ungrouped" { return true }
+                return lhs < rhs
+            }
+
+            for group in sortedGroups {
+                guard let hosts = grouped[group] else { continue }
+
+                // Group header
+                let groupTitle = NSMenuItem(title: group.uppercased(), action: nil, keyEquivalent: "")
+                groupTitle.isEnabled = false
+                menu.addItem(groupTitle)
+
+                // Hosts in this group
+                for host in hosts {
+                    menu.addItem(createHostItem(host))
+                }
+
+                menu.addItem(NSMenuItem.separator())
             }
         }
 
@@ -84,14 +108,22 @@ class MenuBarManager: ObservableObject {
 
     /// Create menu item for a known host
     private func createHostItem(_ host: Host) -> NSMenuItem {
+        // Show hostname and IP: "🟢 proxmox02 (10.71.1.8)"
+        let displayText: String
+        if let hostname = host.hostname, hostname != host.ip {
+            displayText = "\(host.state.icon) \(hostname) (\(host.ip))"
+        } else {
+            displayText = "\(host.state.icon) \(host.ip)"
+        }
+
         let item = NSMenuItem(
-            title: "\(host.state.icon) \(host.displayName)",
+            title: displayText,
             action: #selector(handleHostClick(_:)),
             keyEquivalent: ""
         )
         item.target = self
         item.representedObject = host.id
-        item.toolTip = host.description
+        item.toolTip = host.note ?? host.sshTarget
 
         // Submenu for additional actions
         let submenu = NSMenu()
