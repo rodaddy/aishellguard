@@ -62,7 +62,7 @@ struct ManageHostsView: View {
                     ForEach(groupedHosts, id: \.key) { group, hosts in
                         Section(header: Text(group.uppercased()).font(.caption).foregroundColor(.secondary)) {
                             ForEach(hosts) { host in
-                                HostRowView(host: host)
+                                HostRowView(host: host, stateManager: stateManager, onUpdate: onUpdate)
                                     .tag(host.id)
                             }
                         }
@@ -169,9 +169,22 @@ struct ManageHostsView: View {
     }
 }
 
-/// Row in host list
+/// Row in host list with context menu for group changes
 struct HostRowView: View {
     let host: Host
+    @ObservedObject var stateManager: StateManager
+    let onUpdate: () -> Void
+
+    /// All existing groups
+    private var existingGroups: [String] {
+        let groups = Set(stateManager.state.hosts.compactMap { $0.tags.first })
+        return groups.sorted()
+    }
+
+    /// Current group of this host
+    private var currentGroup: String {
+        host.tags.first ?? ""
+    }
 
     var body: some View {
         HStack {
@@ -185,6 +198,65 @@ struct HostRowView: View {
             }
         }
         .padding(.vertical, 2)
+        .contextMenu {
+            // Move to group submenu
+            Menu("Move to Group") {
+                Button("None (Ungrouped)") {
+                    moveToGroup("")
+                }
+                .disabled(currentGroup.isEmpty)
+
+                Divider()
+
+                ForEach(existingGroups, id: \.self) { group in
+                    Button(group) {
+                        moveToGroup(group)
+                    }
+                    .disabled(group == currentGroup)
+                }
+            }
+
+            Divider()
+
+            // Quick state changes
+            Menu("Set State") {
+                ForEach(SSHState.allCases, id: \.self) { state in
+                    Button("\(state.icon) \(state.label)") {
+                        Task {
+                            await stateManager.updateHostState(id: host.id, newState: state)
+                            onUpdate()
+                        }
+                    }
+                    .disabled(host.state == state)
+                }
+            }
+        }
+    }
+
+    private func moveToGroup(_ newGroup: String) {
+        Task {
+            // Build new tags: new group first, then existing non-group tags
+            var newTags: [String] = []
+            if !newGroup.isEmpty {
+                newTags.append(newGroup)
+            }
+            // Keep other tags (skip the first one which was the old group)
+            let otherTags = host.tags.dropFirst()
+            newTags.append(contentsOf: otherTags)
+
+            let updatedHost = Host(
+                id: host.id,
+                hostname: host.hostname,
+                ip: host.ip,
+                user: host.user,
+                state: host.state,
+                note: host.note,
+                lastUsed: host.lastUsed,
+                tags: newTags
+            )
+            await stateManager.upsertHost(updatedHost)
+            onUpdate()
+        }
     }
 }
 
@@ -288,7 +360,7 @@ struct HostDetailView: View {
     }
 }
 
-/// Sheet for adding/editing host
+/// Sheet for adding/editing host with group selection
 struct HostEditorSheet: View {
     let existingHost: Host?
     @ObservedObject var stateManager: StateManager
@@ -302,7 +374,10 @@ struct HostEditorSheet: View {
     @State private var user: String = "rico"
     @State private var state: SSHState = .ask
     @State private var note: String = ""
-    @State private var tagsText: String = ""
+    @State private var selectedGroup: String = ""
+    @State private var newGroupName: String = ""
+    @State private var additionalTags: String = ""
+    @State private var showNewGroupField = false
 
     init(host: Host?, stateManager: StateManager, onSave: @escaping () -> Void) {
         self.existingHost = host
@@ -316,8 +391,17 @@ struct HostEditorSheet: View {
             _user = State(initialValue: host.user)
             _state = State(initialValue: host.state)
             _note = State(initialValue: host.note ?? "")
-            _tagsText = State(initialValue: host.tags.joined(separator: ", "))
+            // First tag is the group
+            _selectedGroup = State(initialValue: host.tags.first ?? "")
+            // Rest are additional tags
+            _additionalTags = State(initialValue: host.tags.dropFirst().joined(separator: ", "))
         }
+    }
+
+    /// Get all existing groups from current hosts
+    private var existingGroups: [String] {
+        let groups = Set(stateManager.state.hosts.compactMap { $0.tags.first })
+        return groups.sorted()
     }
 
     var body: some View {
@@ -326,18 +410,69 @@ struct HostEditorSheet: View {
                 .font(.title2)
 
             Form {
-                TextField("ID:", text: $id)
-                    .disabled(existingHost != nil)
-                TextField("Hostname:", text: $hostname)
-                TextField("IP Address:", text: $ip)
-                TextField("User:", text: $user)
-                Picker("State:", selection: $state) {
-                    ForEach(SSHState.allCases, id: \.self) { s in
-                        Text("\(s.icon) \(s.label)").tag(s)
-                    }
+                Section("Connection") {
+                    TextField("ID:", text: $id)
+                        .disabled(existingHost != nil)
+                        .help("Unique identifier like 'proxmox02'")
+                    TextField("Hostname:", text: $hostname)
+                        .help("Display name in menu")
+                    TextField("IP Address:", text: $ip)
+                    TextField("User:", text: $user)
                 }
-                TextField("Tags (comma-separated):", text: $tagsText)
-                TextField("Note:", text: $note)
+
+                Section("Authorization") {
+                    Picker("State:", selection: $state) {
+                        ForEach(SSHState.allCases, id: \.self) { s in
+                            Text("\(s.icon) \(s.label)").tag(s)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Organization") {
+                    // Group picker
+                    HStack {
+                        Text("Group:")
+                        Picker("", selection: $selectedGroup) {
+                            Text("None").tag("")
+                            ForEach(existingGroups, id: \.self) { group in
+                                Text(group).tag(group)
+                            }
+                            Divider()
+                            Text("➕ Create New Group...").tag("__new__")
+                        }
+                        .onChange(of: selectedGroup) { newValue in
+                            if newValue == "__new__" {
+                                showNewGroupField = true
+                                selectedGroup = ""
+                            }
+                        }
+                    }
+
+                    if showNewGroupField {
+                        HStack {
+                            TextField("New group name:", text: $newGroupName)
+                            Button("Add") {
+                                if !newGroupName.isEmpty {
+                                    selectedGroup = newGroupName.lowercased()
+                                    newGroupName = ""
+                                    showNewGroupField = false
+                                }
+                            }
+                            Button("Cancel") {
+                                showNewGroupField = false
+                                newGroupName = ""
+                            }
+                        }
+                    }
+
+                    TextField("Additional Tags:", text: $additionalTags)
+                        .help("Comma-separated extra tags (optional)")
+                }
+
+                Section("Info") {
+                    TextField("Note:", text: $note)
+                }
             }
             .formStyle(.grouped)
 
@@ -351,25 +486,33 @@ struct HostEditorSheet: View {
             }
         }
         .padding()
-        .frame(width: 400, height: 350)
+        .frame(width: 450, height: 480)
     }
 
     private var isValid: Bool {
-        !id.isEmpty && !ip.isEmpty && !user.isEmpty
+        !id.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !ip.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !user.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func save() {
-        let tags = tagsText.split(separator: ",")
+        // Build tags array: group first, then additional tags
+        var tags: [String] = []
+        if !selectedGroup.isEmpty {
+            tags.append(selectedGroup.lowercased())
+        }
+        let extraTags = additionalTags.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-            .filter { !$0.isEmpty }
+            .filter { !$0.isEmpty && $0 != selectedGroup.lowercased() }
+        tags.append(contentsOf: extraTags)
 
         let host = Host(
             id: id.trimmingCharacters(in: .whitespaces),
-            hostname: hostname.isEmpty ? nil : hostname,
+            hostname: hostname.isEmpty ? nil : hostname.trimmingCharacters(in: .whitespaces),
             ip: ip.trimmingCharacters(in: .whitespaces),
             user: user.trimmingCharacters(in: .whitespaces),
             state: state,
-            note: note.isEmpty ? nil : note,
+            note: note.isEmpty ? nil : note.trimmingCharacters(in: .whitespaces),
             lastUsed: existingHost?.lastUsed,
             tags: tags
         )
