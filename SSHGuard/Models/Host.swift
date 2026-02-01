@@ -82,19 +82,41 @@ struct SSHPermissionsState: Codable {
     var lastUpdated: Date
     var hosts: [Host]
     var pending: [PendingHost]
+    var groupOrder: [String]  // Custom group ordering (first tag)
 
     init(
         version: String = "1.0",
         machine: String = "mac-studio",
         lastUpdated: Date = Date(),
         hosts: [Host] = [],
-        pending: [PendingHost] = []
+        pending: [PendingHost] = [],
+        groupOrder: [String] = []
     ) {
         self.version = version
         self.machine = machine
         self.lastUpdated = lastUpdated
         self.hosts = hosts
         self.pending = pending
+        self.groupOrder = groupOrder
+    }
+
+    /// Get groups in custom order (groups not in order appear at end alphabetically)
+    func sortedGroups() -> [String] {
+        let allGroups = Set(hosts.compactMap { $0.tags.first })
+        var result: [String] = []
+
+        // First add groups in custom order
+        for group in groupOrder {
+            if allGroups.contains(group) {
+                result.append(group)
+            }
+        }
+
+        // Then add remaining groups alphabetically
+        let remaining = allGroups.subtracting(Set(groupOrder)).sorted()
+        result.append(contentsOf: remaining)
+
+        return result
     }
 
     /// Find host by IP or hostname

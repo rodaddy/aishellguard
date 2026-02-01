@@ -165,6 +165,26 @@ class StateManager: ObservableObject {
         await save()
     }
 
+    // MARK: - Group Management
+
+    /// Update custom group order
+    func updateGroupOrder(_ order: [String]) async {
+        state.groupOrder = order
+        await save()
+    }
+
+    /// Move a group to a new position
+    func moveGroup(from: String, toIndex: Int) async {
+        var order = state.sortedGroups()
+        if let currentIndex = order.firstIndex(of: from) {
+            order.remove(at: currentIndex)
+            let newIndex = min(toIndex, order.count)
+            order.insert(from, at: newIndex)
+            state.groupOrder = order
+            await save()
+        }
+    }
+
     // MARK: - Pending Host Management
 
     /// Add pending host

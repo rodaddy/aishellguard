@@ -73,13 +73,14 @@ struct ManageHostsView: View {
 
                 // Host list grouped with drag & drop
                 List(selection: $selectedHostID) {
-                    ForEach(groupedHosts, id: \.key) { group, hosts in
+                    ForEach(Array(groupedHosts.enumerated()), id: \.element.key) { index, groupData in
                         Section(header: GroupHeaderView(
-                            group: group,
+                            group: groupData.key,
+                            groupIndex: index,
                             stateManager: stateManager,
                             onUpdate: onUpdate
                         )) {
-                            ForEach(hosts) { host in
+                            ForEach(groupData.value) { host in
                                 HostRowView(host: host, stateManager: stateManager, onUpdate: onUpdate)
                                     .tag(host.id)
                                     .draggable(host.id) // Make hosts draggable by ID
@@ -164,11 +165,22 @@ struct ManageHostsView: View {
             host.tags.first ?? "ungrouped"
         }
 
-        return grouped.sorted { lhs, rhs in
-            if lhs.key == "ungrouped" { return false }
-            if rhs.key == "ungrouped" { return true }
-            return lhs.key < rhs.key
+        // Use custom order from state
+        let sortedGroups = stateManager.state.sortedGroups()
+        var result: [(key: String, value: [Host])] = []
+
+        for group in sortedGroups {
+            if let hosts = grouped[group] {
+                result.append((key: group, value: hosts))
+            }
         }
+
+        // Add ungrouped at end if exists
+        if let ungrouped = grouped["ungrouped"], !sortedGroups.contains("ungrouped") {
+            result.append((key: "ungrouped", value: ungrouped))
+        }
+
+        return result
     }
 
     private func editSelected() {
@@ -188,38 +200,56 @@ struct ManageHostsView: View {
     }
 }
 
-/// Group header that accepts dropped hosts
+/// Group header that accepts dropped hosts and can be reordered
 struct GroupHeaderView: View {
     let group: String
+    let groupIndex: Int
     @ObservedObject var stateManager: StateManager
     let onUpdate: () -> Void
 
-    @State private var isTargeted = false
+    @State private var isHostDropTarget = false
+    @State private var isGroupDropTarget = false
 
     var body: some View {
-        Text(group.uppercased())
-            .font(.caption)
-            .foregroundColor(isTargeted ? .accentColor : .secondary)
-            .fontWeight(isTargeted ? .bold : .regular)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 2)
-            .background(isTargeted ? Color.accentColor.opacity(0.2) : Color.clear)
-            .cornerRadius(4)
-            .dropDestination(for: String.self) { hostIDs, _ in
-                // Move dropped hosts to this group
-                for hostID in hostIDs {
-                    moveHost(id: hostID, toGroup: group)
+        HStack {
+            Image(systemName: "line.3.horizontal")
+                .foregroundColor(.secondary.opacity(0.5))
+                .font(.caption2)
+
+            Text(group.uppercased())
+                .font(.caption)
+                .fontWeight(.semibold)
+        }
+        .foregroundColor(isHostDropTarget || isGroupDropTarget ? .accentColor : .secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .background(
+            isHostDropTarget ? Color.accentColor.opacity(0.2) :
+            isGroupDropTarget ? Color.orange.opacity(0.2) : Color.clear
+        )
+        .cornerRadius(4)
+        .draggable("group:\(group)") // Draggable as group
+        .dropDestination(for: String.self) { items, _ in
+            for item in items {
+                if item.hasPrefix("group:") {
+                    // Reorder groups
+                    let draggedGroup = String(item.dropFirst(6))
+                    reorderGroup(draggedGroup, toIndex: groupIndex)
+                } else {
+                    // Move host to this group
+                    moveHost(id: item, toGroup: group)
                 }
-                return true
-            } isTargeted: { targeted in
-                isTargeted = targeted
             }
+            return true
+        } isTargeted: { targeted in
+            isHostDropTarget = targeted
+        }
     }
 
     private func moveHost(id: String, toGroup: String) {
         guard let host = stateManager.state.findHost(byID: id) else { return }
 
-        // Build new tags: new group first, then other tags
         var newTags: [String] = []
         if toGroup != "ungrouped" {
             newTags.append(toGroup)
@@ -240,6 +270,13 @@ struct GroupHeaderView: View {
 
         Task {
             await stateManager.upsertHost(updatedHost)
+            onUpdate()
+        }
+    }
+
+    private func reorderGroup(_ from: String, toIndex: Int) {
+        Task {
+            await stateManager.moveGroup(from: from, toIndex: toIndex)
             onUpdate()
         }
     }
