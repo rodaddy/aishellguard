@@ -22,9 +22,8 @@ class MenuBarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateMenuBarIcon()
-            }
+            guard let self else { return }
+            self.updateMenuBarIcon()
         }
     }
 
