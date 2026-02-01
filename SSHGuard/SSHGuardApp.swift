@@ -1,10 +1,12 @@
 import SwiftUI
+import AppKit
 
 /// Main application entry point
 @main
 struct SSHGuardApp: App {
     @StateObject private var stateManager = StateManager()
     @StateObject private var menuBarManager: MenuBarManager
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         let stateManager = StateManager()
@@ -16,6 +18,49 @@ struct SSHGuardApp: App {
         // Settings window only - menu bar is handled by MenuBarManager (AppKit)
         Settings {
             SettingsView(stateManager: stateManager)
+        }
+    }
+}
+
+/// App delegate to handle window focus for menu bar apps
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Start as accessory (menu bar only, no dock icon)
+        // When windows open, we temporarily become regular app
+    }
+}
+
+/// Helper to properly activate windows from menu bar apps
+enum WindowActivation {
+    /// Activate app and bring window to front with keyboard focus
+    static func activate(window: NSWindow?) {
+        guard let window = window else { return }
+
+        // Temporarily become a regular app (shows in dock, can receive focus)
+        NSApp.setActivationPolicy(.regular)
+
+        // Activate and focus
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+
+        // Return to accessory after a delay (hides from dock again)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Only go back to accessory if no windows are visible
+            let hasVisibleWindows = NSApp.windows.contains { $0.isVisible && !$0.title.isEmpty }
+            if !hasVisibleWindows {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
+    /// Call when closing the last window to return to accessory mode
+    static func windowClosed() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let hasVisibleWindows = NSApp.windows.contains { $0.isVisible && $0.title.count > 0 }
+            if !hasVisibleWindows {
+                NSApp.setActivationPolicy(.accessory)
+            }
         }
     }
 }

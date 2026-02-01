@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Window controller for host editor
-class HostEditorWindowController: NSWindowController {
+class HostEditorWindowController: NSWindowController, NSWindowDelegate {
     convenience init(host: Host?, stateManager: StateManager, onSave: @escaping () -> Void) {
         let hostingController = NSHostingController(
             rootView: HostEditorView(
@@ -17,8 +17,27 @@ class HostEditorWindowController: NSWindowController {
         window.styleMask = [.titled, .closable]
         window.setContentSize(NSSize(width: 450, height: 420))
         window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating
 
         self.init(window: window)
+        window.delegate = self
+    }
+
+    override func showWindow(_ sender: Any?) {
+        super.showWindow(sender)
+
+        // Use activation helper for proper keyboard focus
+        WindowActivation.activate(window: window)
+
+        // Drop floating level after a moment
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.window?.level = .normal
+        }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        WindowActivation.windowClosed()
     }
 }
 

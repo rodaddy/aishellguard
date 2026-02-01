@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Window controller for full host management
-class ManageHostsWindowController: NSWindowController {
+class ManageHostsWindowController: NSWindowController, NSWindowDelegate {
     static var shared: ManageHostsWindowController?
 
     convenience init(stateManager: StateManager, onUpdate: @escaping () -> Void) {
@@ -16,8 +16,11 @@ class ManageHostsWindowController: NSWindowController {
         window.setContentSize(NSSize(width: 700, height: 500))
         window.minSize = NSSize(width: 500, height: 400)
         window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating  // Keep above other windows initially
 
         self.init(window: window)
+        window.delegate = self
     }
 
     static func showOrBring(stateManager: StateManager, onUpdate: @escaping () -> Void) {
@@ -27,7 +30,18 @@ class ManageHostsWindowController: NSWindowController {
             shared = ManageHostsWindowController(stateManager: stateManager, onUpdate: onUpdate)
             shared?.showWindow(nil)
         }
-        NSApp.activate(ignoringOtherApps: true)
+
+        // Use activation helper for proper keyboard focus
+        WindowActivation.activate(window: shared?.window)
+
+        // Drop floating level after activation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            shared?.window?.level = .normal
+        }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        WindowActivation.windowClosed()
     }
 }
 
