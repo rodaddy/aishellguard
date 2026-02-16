@@ -11,6 +11,23 @@ struct Host: Codable, Identifiable, Equatable {
     var lastUsed: Date?
     var tags: [String]
 
+    // Custom decoding to handle missing 'tags' field gracefully
+    enum CodingKeys: String, CodingKey {
+        case id, hostname, ip, user, state, note, lastUsed, tags
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        hostname = try container.decodeIfPresent(String.self, forKey: .hostname)
+        ip = try container.decode(String.self, forKey: .ip)
+        user = try container.decodeIfPresent(String.self, forKey: .user) ?? NSUserName()
+        state = try container.decodeIfPresent(SSHState.self, forKey: .state) ?? .ask
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+        lastUsed = try container.decodeIfPresent(Date.self, forKey: .lastUsed)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+    }
+
     init(
         id: String,
         hostname: String? = nil,
@@ -105,7 +122,7 @@ struct SSHPermissionsState: Codable {
 
     /// Get groups in custom order (groups not in order appear at end alphabetically)
     func sortedGroups() -> [String] {
-        let allGroups = Set(hosts.compactMap { $0.tags.first })
+        let allGroups = Set(hosts.map { $0.tags.first ?? "ungrouped" })
         var result: [String] = []
 
         // First add groups in custom order

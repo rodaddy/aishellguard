@@ -31,6 +31,7 @@ enum AppSettings {
         static let launchAtLogin = "launchAtLogin"
         static let menuBarIconStyle = "menuBarIconStyle"
         static let showInDock = "showInDock"
+        static let apiPort = "apiPort"
     }
 
     // MARK: - Default Values
@@ -105,6 +106,17 @@ enum AppSettings {
     static var enableHMAC: Bool {
         get { defaults.bool(forKey: "enableHMAC") }
         set { defaults.set(newValue, forKey: "enableHMAC") }
+    }
+
+    // MARK: - API Port
+
+    /// Port for the local HTTP API server (default: 27182)
+    static var apiPort: Int {
+        get {
+            let val = defaults.integer(forKey: Keys.apiPort)
+            return val > 0 ? val : 27182
+        }
+        set { defaults.set(newValue, forKey: Keys.apiPort) }
     }
 
     // MARK: - Show in Dock

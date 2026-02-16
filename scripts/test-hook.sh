@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # test-hook.sh - Test the pre-ssh hook behavior
 #
 # Usage: ./scripts/test-hook.sh

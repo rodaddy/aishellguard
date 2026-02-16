@@ -6,12 +6,14 @@ import AppKit
 struct AIShellGuardApp: App {
     @StateObject private var stateManager = StateManager()
     @StateObject private var menuBarManager: MenuBarManager
+    @StateObject private var apiServer: APIServer
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         let stateManager = StateManager()
         _stateManager = StateObject(wrappedValue: stateManager)
         _menuBarManager = StateObject(wrappedValue: MenuBarManager(stateManager: stateManager))
+        _apiServer = StateObject(wrappedValue: APIServer(stateManager: stateManager))
     }
 
     var body: some Scene {

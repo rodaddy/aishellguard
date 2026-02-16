@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # pre-ssh.sh - AIShell Guard hook for Claude Code
 #
 # Checks SSH authorization before allowing connection.

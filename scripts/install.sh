@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 # install.sh - Install SSHGuard menu bar app and hooks
 #
 # Usage: ./scripts/install.sh
@@ -26,17 +26,11 @@ fi
 
 # Build the app
 echo ""
-echo "Step 1: Building $APP_NAME..."
+echo "Step 1: Building $APP_NAME.app bundle..."
 cd "$PROJECT_ROOT"
 
-if command -v xcodebuild &> /dev/null; then
-    xcodebuild -scheme "$APP_NAME" -configuration Release
-    echo -e "${GREEN}✓${NC} Build complete"
-else
-    # Try swift build as fallback
-    swift build -c release
-    echo -e "${GREEN}✓${NC} Build complete (Swift PM)"
-fi
+"$PROJECT_ROOT/scripts/bundle.sh"
+echo -e "${GREEN}✓${NC} Bundle creation complete"
 
 # Install hook
 echo ""
@@ -81,18 +75,9 @@ echo ""
 echo "Step 4: Installing application..."
 
 APP_DEST="$HOME/Applications/$APP_NAME.app"
+APP_SOURCE="$PROJECT_ROOT/.build/release/$APP_NAME.app"
 
-# Find built app (location differs between xcodebuild and swift build)
-if [[ -d "$PROJECT_ROOT/.build/release/$APP_NAME.app" ]]; then
-    APP_SOURCE="$PROJECT_ROOT/.build/release/$APP_NAME.app"
-elif [[ -d "$PROJECT_ROOT/build/Release/$APP_NAME.app" ]]; then
-    APP_SOURCE="$PROJECT_ROOT/build/Release/$APP_NAME.app"
-else
-    echo -e "${YELLOW}⚠${NC} Could not find built app, you may need to build manually"
-    APP_SOURCE=""
-fi
-
-if [[ -n "$APP_SOURCE" ]]; then
+if [[ -d "$APP_SOURCE" ]]; then
     mkdir -p "$HOME/Applications"
 
     if [[ -d "$APP_DEST" ]]; then
@@ -103,6 +88,7 @@ if [[ -n "$APP_SOURCE" ]]; then
     cp -R "$APP_SOURCE" "$APP_DEST"
     echo -e "${GREEN}✓${NC} App installed: $APP_DEST"
 else
+    echo -e "${YELLOW}⚠${NC} Could not find built app at $APP_SOURCE"
     echo "Skipping app installation"
 fi
 
@@ -125,6 +111,11 @@ echo "Next steps:"
 echo "  1. Start AIShell Guard: open ~/Applications/AIShellGuard.app"
 echo "  2. Look for the network icon in menu bar"
 echo "  3. Configure host authorizations"
+echo ""
+echo "Local API (for Claude Code hooks):"
+echo "  Port: 27182 (default, configurable in app settings)"
+echo "  Test: curl http://127.0.0.1:27182/check?host=10.71.1.5&user=root"
+echo "  NOTE: App must be running for CC SSH checks to work."
 echo ""
 echo "To test the hook:"
 echo "  ./scripts/test-hook.sh"

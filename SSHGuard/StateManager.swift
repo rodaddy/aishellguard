@@ -62,7 +62,7 @@ class StateManager: ObservableObject {
         // Use provided path, or get from settings (which auto-detects PAI vs default)
         self.stateFilePath = stateFilePath ?? AppSettings.stateFilePath
 
-        // Load or create initial state
+        // Load state: try verified first, then unverified to preserve hosts
         if let loadedState = Self.loadState(from: self.stateFilePath, decoder: Self.jsonDecoder) {
             self.state = loadedState
             // If loaded state has no signature, sign it now (migration)
@@ -71,10 +71,16 @@ class StateManager: ObservableObject {
                     await self.save()  // This will add the signature
                 }
             }
+        } else if let unverifiedState = Self.loadStateUnverified(from: self.stateFilePath, decoder: Self.jsonDecoder) {
+            // File exists but signature failed - keep hosts, re-sign
+            self.state = unverifiedState
+            print("⚠️ State file had invalid signature - hosts preserved, re-signing")
+            Task {
+                await self.save()  // Re-sign with correct HMAC
+            }
         } else {
-            // Create empty state
+            // File truly doesn't exist or is unparseable
             self.state = SSHPermissionsState()
-            // Try to save immediately
             Task {
                 await self.save()
             }
@@ -105,6 +111,20 @@ class StateManager: ObservableObject {
             return state
         } catch {
             print("Error loading state file: \(error)")
+            return nil
+        }
+    }
+
+    /// Load state from disk WITHOUT signature verification (fallback to preserve hosts)
+    private static func loadStateUnverified(from url: URL, decoder: JSONDecoder) -> SSHPermissionsState? {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            return try decoder.decode(SSHPermissionsState.self, from: data)
+        } catch {
             return nil
         }
     }
