@@ -223,6 +223,15 @@ aishellguard/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## How it was built
+
+The hook, state file schema and menu bar app were built in one day,
+2026-02-01, with an AI pair programmer, and the design decisions were written
+down as they were made (`docs/STATE-FILE-DESIGN.md`,
+`docs/MENUBAR-POPOVER-REFACTOR.md`). The order of work, the bugs found on the
+first day and why the menu became a popover are in
+[docs/BUILD-STORY.md](docs/BUILD-STORY.md).
+
 ## Project status
 
 Experimental. The hook and the menu bar app build and run (`swift build`); there is no signed release build yet, so install from source. The Swift sources still live in `SSHGuard/` from the project's earlier name.
