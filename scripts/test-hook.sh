@@ -6,7 +6,9 @@
 set -euo pipefail
 
 HOOK="$(cd "$(dirname "$0")/.." && pwd)/hooks/pre-ssh.sh"
-STATE_FILE="${HOME}/.config/pai/infrastructure/ssh-permissions.json"
+# Throwaway state file so the test never overwrites a real host list
+STATE_FILE="$(mktemp -d)/hosts.json"
+export AISHELLGUARD_STATE_FILE="$STATE_FILE"
 
 # Colors for output
 GREEN='\033[0;32m'

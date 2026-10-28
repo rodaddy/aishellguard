@@ -1,5 +1,5 @@
 import XCTest
-@testable import SSHGuard
+@testable import AIShellGuard
 
 @MainActor
 final class StateManagerTests: XCTestCase {

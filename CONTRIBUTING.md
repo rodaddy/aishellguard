@@ -1,10 +1,10 @@
-# Contributing to SSHGuard
+# Contributing to AIShell Guard
 
-We appreciate your interest in contributing to SSHGuard! This document outlines the process for contributing code, reporting bugs, and improving documentation.
+We appreciate your interest in contributing to AIShell Guard! This document outlines the process for contributing code, reporting bugs, and improving documentation.
 
 ## Welcome
 
-SSHGuard is a macOS menu bar app that brings explicit SSH authorization control to your workflow. Whether you're fixing bugs, adding features, or improving docs, your contributions help make SSH management safer and more transparent.
+AIShell Guard is a macOS menu bar app that brings explicit SSH authorization control to your workflow. Whether you're fixing bugs, adding features, or improving docs, your contributions help make SSH management safer and more transparent.
 
 ## How to Contribute
 
@@ -41,7 +41,7 @@ Found a bug or have a feature idea? Please open a GitHub issue with:
 
 ### Requirements
 
-- **macOS 13.0+** - SSHGuard is a native macOS app
+- **macOS 13.0+** - AIShell Guard is a native macOS app
 - **Swift 5.9+** - Minimum Swift version from Package.swift
 - **Xcode 15+** - For building and testing
 - **jq** - For testing the pre-ssh hook (install via `brew install jq`)
@@ -73,7 +73,7 @@ swift test
 swift build
 
 # Run the app
-./.build/debug/SSHGuard
+./.build/debug/AIShellGuard
 ```
 
 ### Release Build
@@ -83,63 +83,63 @@ swift build
 swift build -c release
 
 # Binary location
-./.build/release/SSHGuard
+./.build/release/AIShellGuard
 ```
 
 ### Installing Locally
 
 ```bash
-# Copy to Applications folder
-cp -r ./.build/release/SSHGuard /Applications/SSHGuard.app
+# Build, wrap in an app bundle, install to ~/Applications with the hook
+./scripts/install.sh
 
 # Run the app
-open /Applications/SSHGuard.app
+open ~/Applications/AIShellGuard.app
 ```
 
 ## Testing the Hook
 
-The pre-ssh hook is critical to SSHGuard's security model. Before submitting changes that affect hook behavior, test it thoroughly.
+The pre-ssh hook is critical to AIShell Guard's security model. Before submitting changes that affect hook behavior, test it thoroughly.
 
 ### Hook Test Commands
 
 ```bash
 # Test allowed host (should exit 0)
-./hooks/pre-ssh.sh ssh admin@192.0.2.8
-# Expected output: ✅ SSH to admin@192.0.2.8 is ALLOWED
+./hooks/pre-ssh.sh ssh admin@192.0.2.10
+# Expected output: ✅ SSH to admin@192.0.2.10 is ALLOWED
 
 # Test unknown host (should exit 1, adds to pending)
 ./hooks/pre-ssh.sh ssh admin@192.0.2.99
 # Expected output: ❓ Unknown host, added to pending
 
 # Test blocked host (should exit 1)
-./hooks/pre-ssh.sh ssh root@192.0.2.55
-# Expected output: 🔴 SSH to root@192.0.2.55 is BLOCKED
+./hooks/pre-ssh.sh ssh root@192.0.2.60
+# Expected output: 🔴 SSH to root@192.0.2.60 is BLOCKED
 ```
 
 ### Validating the State File
 
 ```bash
 # Validate JSON syntax
-jq . ~/.config/pai/infrastructure/ssh-permissions.json
+jq . ~/.config/aishellguard/hosts.json
 
 # Pretty-print the state file
-jq '.' ~/.config/pai/infrastructure/ssh-permissions.json
+jq '.' ~/.config/aishellguard/hosts.json
 
 # Check pending hosts
-jq '.pending' ~/.config/pai/infrastructure/ssh-permissions.json
+jq '.pending' ~/.config/aishellguard/hosts.json
 
 # Check host states
-jq '.hosts[] | {id, state}' ~/.config/pai/infrastructure/ssh-permissions.json
+jq '.hosts[] | {id, state}' ~/.config/aishellguard/hosts.json
 ```
 
 ### Hook Debugging
 
 ```bash
 # Watch the hook log in real-time
-tail -f ~/.config/pai/logs/ssh-guard-hook.log
+tail -f ~/.config/aishellguard/hook.log
 
 # Check hook installation
-ls -la ~/.config/pai-private/hooks/pre-ssh.sh
+ls -la ~/.config/aishellguard/hooks/pre-ssh.sh
 
 # Verify hook is executable
 ls -l ./hooks/pre-ssh.sh
@@ -149,7 +149,7 @@ ls -l ./hooks/pre-ssh.sh
 
 ### Swift Standards
 
-SSHGuard follows standard Swift conventions:
+AIShell Guard follows standard Swift conventions:
 
 - **Naming** - Use camelCase for variables and functions, PascalCase for types
 - **Indentation** - 4 spaces (standard in Swift)
@@ -298,7 +298,7 @@ We follow a simple code of conduct:
 - **Be respectful** - Treat all contributors with respect
 - **Be constructive** - Provide helpful feedback, not criticism
 - **Be inclusive** - Welcome people of all backgrounds and experience levels
-- **Be safe** - SSHGuard controls security-critical operations; safety matters
+- **Be safe** - AIShell Guard controls security-critical operations; safety matters
 
 ## Project Structure
 
@@ -327,8 +327,8 @@ aishellguard/
 
 ## License
 
-SSHGuard is provided as-is for private development. License terms will be determined when/if the project is made public.
+AIShell Guard is released under the [MIT License](LICENSE).
 
 ---
 
-Thank you for contributing to SSHGuard! Your help makes SSH management safer and more transparent.
+Thank you for contributing to AIShell Guard! Your help makes SSH management safer and more transparent.

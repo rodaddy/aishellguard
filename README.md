@@ -23,7 +23,7 @@ AI coding assistants such as Claude Code, Cursor and Windsurf can run `ssh` to d
 
 ![Architecture](docs/images/architecture.svg)
 
-The AI tool calls `hooks/pre-ssh.sh` with the SSH command it wants to run. The hook parses `user@host`, finds the state file (the `AISHELLGUARD_STATE_FILE` variable, the path set in the app, or `~/.config/aishellguard/hosts.json`), and matches the target by IP or hostname. Allowed hosts pass with exit `0`; hosts marked ask or blocked are stopped with exit `1`; unknown hosts are stopped and written to the `pending` list. The menu bar app's `StateManager` reads and writes the same file, so a change you make in the popover applies to the very next SSH attempt. The app can also sign the host list with `HMACSigner` so tampering is detectable.
+The AI tool calls `hooks/pre-ssh.sh` with the SSH command it wants to run. The hook parses `user@host`, finds the state file (the `AISHELLGUARD_STATE_FILE` variable, the path set in the app, `~/.config/pai/infrastructure/ssh-permissions.json` if it exists, or `~/.config/aishellguard/hosts.json`), and matches the target by IP or hostname. Allowed hosts pass with exit `0`; hosts marked ask or blocked are stopped with exit `1`; unknown hosts are stopped and written to the `pending` list. The menu bar app's `StateManager` reads and writes the same file, so a change you make in the popover applies to the very next SSH attempt. The app can also sign the host list with `HMACSigner` so tampering is detectable.
 
 ## Features
 
@@ -112,13 +112,15 @@ cp /path/to/aishellguard/hooks/pre-ssh.sh ~/.config/aishellguard/hooks/
 chmod +x ~/.config/aishellguard/hooks/pre-ssh.sh
 ```
 
-Then configure Claude Code to use the hook for SSH commands.
+Then configure Claude Code to use the hook for SSH commands. The hook takes the SSH command as arguments (`pre-ssh.sh ssh user@host`), while Claude Code's `PreToolUse` hooks receive the tool call as JSON on stdin, so a short wrapper must pass the command through.
 
 ### For Cursor / Windsurf
 
 Similar hook integration - configure your tool to run `pre-ssh.sh` before SSH commands.
 
 ### Testing the Hook
+
+These run against the example state that `scripts/install.sh` copies from `schemas/example-state.json`. `./scripts/test-hook.sh` runs the same checks against a throwaway state file.
 
 ```bash
 # Test allowed host
@@ -130,13 +132,13 @@ Similar hook integration - configure your tool to run `pre-ssh.sh` before SSH co
 # Expected: ❓ Unknown host, added to pending (exit 1)
 
 # Test blocked host
-./hooks/pre-ssh.sh ssh root@192.0.2.55
+./hooks/pre-ssh.sh ssh root@192.0.2.60
 # Expected: 🔴 SSH blocked (exit 1)
 ```
 
 ### Hook Logs
 
-Check `~/.config/aishellguard/logs/aishellguard-hook.log` for connection attempts.
+Check `~/.config/aishellguard/hook.log` for connection attempts.
 
 ## Troubleshooting
 
