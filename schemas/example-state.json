@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "machine": "example-mac",
+  "lastUpdated": "2026-01-31T23:55:00Z",
+  "hosts": [
+    {
+      "id": "server-01",
+      "hostname": "server-01",
+      "ip": "192.0.2.10",
+      "user": "admin",
+      "state": "allowed",
+      "note": "Primary server",
+      "lastUsed": "2026-01-31T14:30:00Z",
+      "tags": ["homelab", "infrastructure"]
+    },
+    {
+      "id": "automation-01",
+      "hostname": "automation-01",
+      "ip": "192.0.2.20",
+      "user": "root",
+      "state": "allowed",
+      "note": "Automation server",
+      "lastUsed": "2026-01-30T09:15:00Z",
+      "tags": ["automation", "workflows"]
+    },
+    {
+      "id": "docs-01",
+      "hostname": "docs-01",
+      "ip": "192.0.2.30",
+      "user": "root",
+      "state": "allowed",
+      "note": "Documentation server",
+      "lastUsed": "2026-01-29T16:45:00Z",
+      "tags": ["documentation", "knowledge-base"]
+    },
+    {
+      "id": "database-01",
+      "hostname": "database-01",
+      "ip": "192.0.2.40",
+      "user": "postgres",
+      "state": "ask",
+      "note": "PostgreSQL database - ask before connecting",
+      "lastUsed": null,
+      "tags": ["database", "production", "postgresql"]
+    },
+    {
+      "id": "bot-01",
+      "hostname": "bot-01",
+      "ip": "192.0.2.50",
+      "user": "root",
+      "state": "allowed",
+      "note": "Discord bot server",
+      "lastUsed": "2026-01-28T11:20:00Z",
+      "tags": ["discord", "bot"]
+    },
+    {
+      "id": "proxy-01",
+      "hostname": "proxy-01",
+      "ip": "192.0.2.60",
+      "user": "root",
+      "state": "blocked",
+      "note": "Nginx reverse proxy - rarely need direct access",
+      "lastUsed": "2026-01-15T08:00:00Z",
+      "tags": ["nginx", "proxy", "infrastructure"]
+    }
+  ],
+  "pending": [
+    {
+      "ip": "192.0.2.99",
+      "user": "root",
+      "detectedAt": "2026-01-31T23:45:00Z",
+      "attemptedBy": "claude-code"
+    }
+  ]
+}

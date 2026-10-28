@@ -1,0 +1,19 @@
+flowchart TB
+  AI["AI coding tool<br/>(e.g. Claude Code Bash tool)"] -->|"ssh user@host"| HOOK["hooks/pre-ssh.sh"]
+  HOOK -->|"reads"| STATE[("state file<br/>~/.config/aishellguard/hosts.json<br/>or AISHELLGUARD_STATE_FILE")]
+  HOOK --> DEC{"host state"}
+  DEC -->|allowed| OK["exit 0<br/>ssh runs"]
+  DEC -->|"ask / blocked"| NO["exit 1<br/>ssh stopped"]
+  DEC -->|unknown| PEND["exit 1<br/>host added to pending queue"]
+  PEND --> STATE
+  subgraph APP["AIShellGuard menu bar app (SSHGuard/)"]
+    MB["MenuBarManager<br/>MenuBarPopover"]
+    WIN["ManageHostsWindow<br/>HostEditorWindow"]
+    SM["StateManager"]
+    HM["HMACSigner<br/>(optional signature)"]
+    MB --> SM
+    WIN --> SM
+    SM --> HM
+  end
+  SM -->|"reads and writes"| STATE
+  USER["you"] -->|"allow / ask / block,<br/>approve pending hosts"| MB
