@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `id`: Unique identifier (UUID-based)
   - `hostname`: Optional DNS name
   - `ip`: IP address (unique)
-  - `user`: SSH username (default: "rico")
+  - `user`: SSH username (default: current macOS user)
   - `state`: Authorization state (allowed/ask/blocked)
   - `note`: Optional description
   - `lastUsed`: Timestamp of last access
