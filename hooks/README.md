@@ -27,24 +27,24 @@ ln -sf /path/to/aishellguard/hooks/pre-ssh.sh \
 
 ### Testing
 
-**Test the hook directly:**
+**Test the hook directly** (against the example state that `scripts/install.sh` copies from `schemas/example-state.json`):
 ```bash
 # Test allowed host
-/path/to/aishellguard/hooks/pre-ssh.sh ssh user@192.0.2.8
-# Expected: ✅ SSH to user@192.0.2.8 is ALLOWED (exit 0)
+/path/to/aishellguard/hooks/pre-ssh.sh ssh user@192.0.2.10
+# Expected: ✅ SSH to user@192.0.2.10 is ALLOWED (exit 0)
 
 # Test unknown host
 /path/to/aishellguard/hooks/pre-ssh.sh ssh user@192.0.2.99
 # Expected: ❓ Unknown host, added to pending (exit 1)
 
 # Test blocked host
-/path/to/aishellguard/hooks/pre-ssh.sh ssh root@192.0.2.55
-# Expected: 🔴 SSH to root@192.0.2.55 is BLOCKED (exit 1)
+/path/to/aishellguard/hooks/pre-ssh.sh ssh root@192.0.2.60
+# Expected: 🔴 SSH to root@192.0.2.60 is BLOCKED (exit 1)
 ```
 
 **Check the log:**
 ```bash
-tail -f ~/.config/aishellguard/logs/aishellguard-hook.log
+tail -f ~/.config/aishellguard/hook.log
 ```
 
 ### Hook Behavior
@@ -58,22 +58,18 @@ tail -f ~/.config/aishellguard/logs/aishellguard-hook.log
 
 ### State File Location
 
-**Reads from:** `~/.config/aishellguard/hosts.json`
+**Reads from**, first match wins: `$AISHELLGUARD_STATE_FILE`, the path set in the app's preferences, `~/.config/pai/infrastructure/ssh-permissions.json` if it exists, then `~/.config/aishellguard/hosts.json`.
 
-If the file doesn't exist, the hook:
-1. Creates empty state file
-2. Blocks the SSH attempt
-3. Adds host to pending queue
-4. Prompts to run AIShell Guard app
+If the file doesn't exist, the hook blocks the SSH attempt (exit 1) and logs a prompt to run the AIShell Guard app.
 
 ### Logging
 
-**Log location:** `~/.config/aishellguard/logs/aishellguard-hook.log`
+**Log location:** `~/.config/aishellguard/hook.log`
 
 **Log format:**
 ```
-[2026-01-31T23:55:00Z] [INFO] SSH attempt: user@192.0.2.8
-[2026-01-31T23:55:00Z] [INFO] ✅ SSH to user@192.0.2.8 is ALLOWED
+[2026-01-31T23:55:00Z] [INFO] SSH attempt: user@192.0.2.10
+[2026-01-31T23:55:00Z] [INFO] ✅ SSH to user@192.0.2.10 is ALLOWED
 ```
 
 **Log levels:**

@@ -236,7 +236,7 @@ class StateManager: ObservableObject {
         let newHost = Host(
             id: "host-\(UUID().uuidString.prefix(8))",
             ip: pending.ip,
-            user: pending.user ?? "rico",
+            user: pending.user ?? NSUserName(),
             state: state,
             note: "Added from pending queue"
         )

@@ -19,7 +19,7 @@ get_state_file() {
 
     # 2. Check macOS defaults (UserDefaults) for app-configured path
     local defaults_path
-    defaults_path=$(defaults read com.aishellguard.app stateFilePath 2>/dev/null || echo "")
+    defaults_path=$(defaults read com.rodaddy.sshguard stateFilePath 2>/dev/null || echo "")
     if [[ -n "$defaults_path" && -f "$defaults_path" ]]; then
         echo "$defaults_path"
         return

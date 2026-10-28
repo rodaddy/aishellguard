@@ -29,14 +29,8 @@ echo ""
 echo "Step 1: Building $APP_NAME..."
 cd "$PROJECT_ROOT"
 
-if command -v xcodebuild &> /dev/null; then
-    xcodebuild -scheme "$APP_NAME" -configuration Release
-    echo -e "${GREEN}✓${NC} Build complete"
-else
-    # Try swift build as fallback
-    swift build -c release
-    echo -e "${GREEN}✓${NC} Build complete (Swift PM)"
-fi
+swift build -c release
+echo -e "${GREEN}✓${NC} Build complete (Swift PM)"
 
 # Install hook
 echo ""
@@ -82,15 +76,16 @@ echo "Step 4: Installing application..."
 
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 
-# Find built app (location differs between xcodebuild and swift build)
-if [[ -d "$PROJECT_ROOT/.build/release/$APP_NAME.app" ]]; then
-    APP_SOURCE="$PROJECT_ROOT/.build/release/$APP_NAME.app"
-elif [[ -d "$PROJECT_ROOT/build/Release/$APP_NAME.app" ]]; then
-    APP_SOURCE="$PROJECT_ROOT/build/Release/$APP_NAME.app"
-else
-    echo -e "${YELLOW}⚠${NC} Could not find built app, you may need to build manually"
-    APP_SOURCE=""
-fi
+# swift build makes a bare executable, so wrap it in an app bundle.
+# Bundle.module looks for the resource bundle at the .app's root.
+BIN_DIR="$PROJECT_ROOT/.build/release"
+APP_SOURCE="$BIN_DIR/$APP_NAME.app"
+rm -rf "$APP_SOURCE"
+mkdir -p "$APP_SOURCE/Contents/MacOS"
+cp "$BIN_DIR/$APP_NAME" "$APP_SOURCE/Contents/MacOS/$APP_NAME"
+cp -R "$BIN_DIR/${APP_NAME}_${APP_NAME}.bundle" "$APP_SOURCE/"
+cp "$PROJECT_ROOT/Info.plist" "$APP_SOURCE/Contents/Info.plist"
+plutil -replace CFBundleExecutable -string "$APP_NAME" "$APP_SOURCE/Contents/Info.plist"
 
 if [[ -n "$APP_SOURCE" ]]; then
     mkdir -p "$HOME/Applications"
@@ -133,5 +128,5 @@ echo "State file location:"
 echo "  $STATE_FILE"
 echo ""
 echo "Hook log:"
-echo "  ~/.config/aishellguard/logs/ssh-guard-hook.log"
+echo "  ~/.config/aishellguard/hook.log"
 echo ""
